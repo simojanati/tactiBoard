@@ -308,8 +308,7 @@ if (!id) {
         ? `<a class="btn btn-outline-dark btn-sm" href="tactical-board.html?id=${tactic.id}${primaryDiagram?.id ? `&diagramId=${primaryDiagram.id}` : ''}">${tt('tactic.edit_board', 'Modifier dans Board')}</a>`
         : '';
       tacticDiagramHtml = `
-        <video id="td-primary-video" data-td-timeline="td-primary" class="img-fluid rounded border w-100" src="${primaryDiagramVideoUrl}" playsinline preload="metadata" controls></video>
-        ${tdTimelineHtml('td-primary')}
+        <video id="td-primary-video" class="img-fluid rounded border w-100" src="${primaryDiagramVideoUrl}" playsinline preload="metadata" controls></video>
         <div class="mt-3 d-flex flex-wrap gap-2 justify-content-center">
           <a class="btn btn-outline-secondary btn-sm" href="${primaryDiagramVideoUrl}" target="_blank">WebM</a>
           ${primaryDiagramImageUrl ? `<a class="btn btn-outline-primary btn-sm" href="${primaryDiagramImageUrl}" target="_blank">${tt('tactic.image', 'Image')}</a>` : ''}
@@ -768,7 +767,7 @@ function tdBuildSideMedia(diagram) {
         <div class="card-body">
           <div class="small text-uppercase text-muted fw-semibold mb-2">Preview</div>
           <video id="td-side-video" data-td-webm="1" data-timeline-prefix="td-side" class="w-100 rounded border" src="${tdEscape(webm)}" playsinline preload="metadata"></video>
-          ${tdTimelineMarkup('td-side')}
+          
         </div>
       </div>
     `;
@@ -956,11 +955,9 @@ function tdBindPrimaryAndLinkedTimelines(scope = document) {
   const primaryVideo = scope.querySelector('#td-primary-video');
   if (primaryVideo) {
     tdForceLoadVideo(primaryVideo);
-    try { tdBindTimeline('td-primary', primaryVideo); } catch (e) { console.warn(e); }
   }
   const sideVideo = scope.querySelector('#td-side-video');
   if (sideVideo) {
     tdForceLoadVideo(sideVideo);
-    try { tdBindTimeline('td-side', sideVideo); } catch (e) { console.warn(e); }
   }
 }
