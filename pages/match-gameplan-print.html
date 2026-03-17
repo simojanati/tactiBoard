@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Export Game Plan</title>
+<link href="../assets/vendor/css/core.css" rel="stylesheet"><link href="../assets/vendor/css/theme-default.css" rel="stylesheet"><link href="../assets/css/app.css" rel="stylesheet">
+<style>
+:root{--gp-primary:#696cff;--gp-text:#223043;--gp-muted:#6c7a8a;--gp-border:#dfe5ee;--gp-surface:#f8f9fc;--gp-soft:#eef1f7}
+body{background:#fff;padding:24px;color:var(--gp-text);font-family:Inter,Arial,sans-serif}
+.gp-shell{max-width:980px;margin:0 auto}
+.gp-cover{border:1px solid var(--gp-border);border-radius:18px;padding:20px 22px;background:linear-gradient(180deg,#fff 0%,#f7f9ff 100%);margin-bottom:18px}
+.gp-title{font-size:30px;line-height:1.1;font-weight:800;margin:0 0 6px}
+.gp-subtitle{font-size:13px;color:var(--gp-muted);margin:0}
+.gp-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+.gp-stat{border:1px solid var(--gp-border);background:#fff;border-radius:14px;padding:12px 14px}
+.gp-stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--gp-muted);margin-bottom:6px}
+.gp-stat-value{font-size:20px;font-weight:800}
+.gp-note-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.gp-note-card{border:1px solid var(--gp-border);border-radius:14px;padding:14px;background:var(--gp-surface);break-inside:avoid}
+.gp-note-title{font-size:13px;font-weight:800;margin:0 0 8px}
+.gp-note-body{white-space:pre-wrap;font-size:13px;line-height:1.5;color:var(--gp-text)}
+.section-title{font-size:18px;font-weight:800;margin:28px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--gp-soft)}
+.gp-card{border:1px solid var(--gp-border);border-radius:16px;padding:16px;margin-bottom:14px;break-inside:avoid;background:#fff;box-shadow:0 4px 14px rgba(34,48,67,.04)}
+.gp-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.gp-card-title{font-size:18px;font-weight:800;line-height:1.25;margin:0 0 5px}
+.meta{font-size:12px;color:var(--gp-muted);line-height:1.5}
+.gp-chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.gp-chip{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:700;background:var(--gp-soft);color:var(--gp-text);border:1px solid #e4e9f2}
+.gp-chip.priority-normal{background:#eef2ff;color:#4456d6}
+.gp-chip.priority-important{background:#fff4de;color:#b36b00}
+.gp-chip.priority-urgent{background:#ffe3e3;color:#c22d2d}
+.gp-order{min-width:42px;height:42px;border-radius:999px;background:var(--gp-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+.gp-note-inline{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--gp-surface);font-size:13px;line-height:1.5;white-space:pre-wrap}
+.gp-image-wrap{margin-top:14px;display:flex;justify-content:center;align-items:center}
+.gp-image-card{display:inline-flex;justify-content:center;align-items:center;padding:10px;border:1px solid var(--gp-border);border-radius:14px;background:#fff;max-width:100%}
+.thumb{display:block;width:50%;max-width:50%;height:auto;max-height:240px;object-fit:contain;border-radius:8px;background:#f8f9fa}
+.page-footer{margin-top:24px;padding-top:10px;border-top:1px solid var(--gp-border);display:flex;justify-content:space-between;font-size:11px;color:var(--gp-muted)}
+.no-print{margin-bottom:12px}
+@page{size:A4;margin:14mm}
+@media print {.no-print{display:none !important} body{padding:0}.gp-shell{max-width:none}.gp-card,.gp-note-card,.gp-cover{box-shadow:none}.page-footer{position:fixed;left:0;right:0;bottom:0;background:#fff}}
+@media (max-width: 900px){.gp-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.gp-note-grid{grid-template-columns:1fr}.thumb{width:100%;max-width:100%;max-height:none}}
+</style></head><body>
+<div class="gp-shell">
+<div class="no-print"><button class="btn btn-primary" onclick="window.print()">Imprimer / PDF</button></div>
+<div id="host">Chargement...</div>
+</div>
+<script type="module" src="../assets/js/app/match-gameplan-print.js"></script>
+</body></html>

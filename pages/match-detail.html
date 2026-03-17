@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+
+<html class="light-style layout-menu-fixed" data-assets-path="../assets/" data-template="vertical-menu-template-free" data-theme="theme-default" dir="ltr" lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" name="viewport"/>
+<title>TactiBoard</title>
+<meta content="Détail match et game plan" name="description"/>
+<link href="../assets/img/favicon/favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&amp;display=swap" rel="stylesheet"/>
+<link href="../assets/vendor/fonts/boxicons.css" rel="stylesheet"/>
+<link class="template-customizer-core-css" href="../assets/vendor/css/core.css" rel="stylesheet"/>
+<link class="template-customizer-theme-css" href="../assets/vendor/css/theme-default.css" rel="stylesheet"/>
+<link href="../assets/css/demo.css" rel="stylesheet"/>
+<link href="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" rel="stylesheet"/>
+<link href="../assets/css/app.css" rel="stylesheet"/>
+<script src="../assets/vendor/js/helpers.js"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/app/config.local.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+</head>
+<body>
+<div class="layout-wrapper layout-content-navbar"><div class="layout-container">
+<aside class="layout-menu menu-vertical menu bg-menu-theme" id="layout-menu">
+<div class="app-brand demo"><a class="app-brand-link app-brand-link-image" href="index.html"><span class="app-brand-logo demo"><img src="../assets/img/branding/logo-horizontal.png" alt="TactiBoard" class="brand-logo-horizontal brand-logo-menu"></span></a><a class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none" href="javascript:void(0);"><i class="bx bx-chevron-left bx-sm align-middle"></i></a></div>
+<div class="menu-inner-shadow"></div>
+<ul class="menu-inner py-1">
+<li class="menu-item"><a class="menu-link" data-menu-page="dashboard" href="index.html"><i class="menu-icon tf-icons bx bx-home-circle"></i><div>Dashboard</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="teams" href="teams.html"><i class="menu-icon tf-icons bx bx-group"></i><div>Équipes</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="players" href="players.html"><i class="menu-icon tf-icons bx bx-user"></i><div>Joueuses</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="player-links" href="player-links.html"><i class="menu-icon tf-icons bx bx-link-alt"></i><div>Liaison comptes</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="my-team" href="my-team.html"><i class="menu-icon tf-icons bx bx-shield-quarter"></i><div>Mon équipe</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="my-tactics" href="my-tactics.html"><i class="menu-icon tf-icons bx bx-notepad"></i><div>Mes tactiques</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="my-sessions" href="my-sessions.html"><i class="menu-icon tf-icons bx bx-calendar"></i><div>Mes séances</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="my-matches" href="my-matches.html"><i class="menu-icon tf-icons bx bx-trophy"></i><div>Mes matchs</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="coaches" href="coaches.html"><i class="menu-icon tf-icons bx bx-id-card"></i><div>Coachs</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="tactics" href="tactics.html"><i class="menu-icon tf-icons bx bx-notepad"></i><div>Tactiques</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="sessions" href="sessions.html"><i class="menu-icon tf-icons bx bx-calendar"></i><div>Séances</div></a></li>
+<li class="menu-item"><a class="menu-link" data-menu-page="matches" href="matches.html"><i class="menu-icon tf-icons bx bx-trophy"></i><div>Matchs</div></a></li>
+</ul>
+</aside>
+<div class="layout-page">
+<nav class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme" id="layout-navbar"><div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none"><a class="nav-item nav-link px-0 me-xl-4" href="javascript:void(0)"><i class="bx bx-menu bx-sm"></i></a></div><div class="navbar-nav-right d-flex align-items-center w-100" id="navbar-collapse"><div class="navbar-nav align-items-center"><div class="nav-item d-flex align-items-center"><span class="fw-semibold text-primary navbar-page-title d-none d-md-inline-block">Détail du match &amp; game plan</span></div></div></div></nav>
+<div class="content-wrapper"><div class="container-xxl flex-grow-1 container-p-y">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4"><div><h4 class="fw-bold py-3 mb-1" id="page-title">Détail match</h4><p class="mb-0 text-muted">Vue détaillée du match avec tactiques liées au game plan.</p></div><div class="d-flex gap-2"><a class="btn btn-outline-secondary" href="matches.html"><i class="bx bx-arrow-back me-1"></i>Retour</a><a class="btn btn-outline-dark" href="#" id="export-pdf-link"><i class="bx bx-printer me-1"></i>Exporter PDF</a><a class="btn btn-primary" href="matches.html" id="edit-link"><i class="bx bx-edit me-1"></i>Modifier</a></div></div>
+<div id="page-alert"></div>
+<div id="match-detail-host"></div>
+<div class="row">
+<div class="col-lg-4 mb-4"><div class="card gameplan-card h-100"><div class="card-header"><h5 class="mb-0">Offense</h5></div><ul class="list-group list-group-flush" id="gp-offense"></ul></div></div>
+<div class="col-lg-4 mb-4"><div class="card gameplan-card h-100"><div class="card-header"><h5 class="mb-0">Defense</h5></div><ul class="list-group list-group-flush" id="gp-defense"></ul></div></div>
+<div class="col-lg-4 mb-4"><div class="card gameplan-card h-100"><div class="card-header"><h5 class="mb-0">Special Teams</h5></div><ul class="list-group list-group-flush" id="gp-special"></ul></div></div>
+</div>
+<script src="../assets/js/app/page-init.js" type="module"></script>
+<script src="../assets/js/app/match-detail.js" type="module"></script>
+</div>
+          <div class="card mt-4" id="gameplan-card">
+            <div class="card-header">
+              <h5 class="mb-0">Game Plan tactique</h5>
+            </div>
+            <div class="card-body">
+              <div id="gameplan-readonly-hint" class="alert alert-info py-2 px-3 mb-3 d-none">Consultation uniquement pour votre rôle.</div>
+              <div class="row g-3 mb-3">
+                <div class="col-lg-4">
+                  <label class="form-label">Notes générales</label>
+                  <textarea id="gameplan-notes" class="form-control" rows="4" placeholder="Consignes générales du match..."></textarea>
+                </div>
+                <div class="col-lg-4">
+                  <label class="form-label">Notes Offense</label>
+                  <textarea id="offense-notes" class="form-control" rows="4" placeholder="Top plays, red zone, tempo..."></textarea>
+                </div>
+                <div class="col-lg-4">
+                  <label class="form-label">Notes Defense / ST</label>
+                  <textarea id="defense-notes" class="form-control" rows="4" placeholder="Pression, couverture, special teams..."></textarea>
+                </div>
+              </div>
+              <div id="gameplan-list">Chargement...</div>
+              <div class="mt-3 d-flex justify-content-end">
+                <button class="btn btn-primary" id="save-gameplan-btn" type="button"><i class="bx bx-save me-1"></i>Sauvegarder game plan</button>
+              </div>
+            </div>
+          </div>
+
+        <footer class="content-footer footer bg-footer-theme"><div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column"><div class="mb-2 mb-md-0">Projet starter pour gestion tactique de football américain.</div><div><span class="footer-link me-3">Sneat + Supabase</span></div></div></footer><div class="content-backdrop fade"></div></div>
+</div>
+</div><div class="layout-overlay layout-menu-toggle"></div></div>
+<script src="../assets/vendor/libs/jquery/jquery.js"></script><script src="../assets/vendor/libs/popper/popper.js"></script><script src="../assets/vendor/js/bootstrap.js"></script><script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script><script src="../assets/vendor/js/menu.js"></script><script src="../assets/js/main.js"></script>
+</body>
+</html>

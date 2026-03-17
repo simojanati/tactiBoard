@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+<html lang="fr" class="light-style layout-menu-fixed" dir="ltr" data-theme="theme-default" data-assets-path="../assets/" data-template="vertical-menu-template-free">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+  <title>TactiBoard</title>
+  <meta name="description" content="Gestion tactique football américain" />
+  <link rel="icon" type="image/x-icon" href="../assets/img/favicon/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon/favicon-32x32.png" />
+  <link rel="apple-touch-icon" href="../assets/img/favicon/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
+  <script>
+(function(){
+  try {
+    var raw = localStorage.getItem('pbm_auth_cache');
+    if (!raw) return;
+    var data = JSON.parse(raw);
+    if (data && data.role) {
+      document.documentElement.dataset.userRole = data.role;
+      document.documentElement.dataset.roleReady = '1';
+    }
+  } catch(e) {}
+})();
+</script>
+  <link rel="stylesheet" href="../assets/vendor/fonts/boxicons.css" />
+  <link rel="stylesheet" href="../assets/vendor/css/core.css" class="template-customizer-core-css" />
+  <link rel="stylesheet" href="../assets/vendor/css/theme-default.css" class="template-customizer-theme-css" />
+  <link rel="stylesheet" href="../assets/css/demo.css" />
+  <link rel="stylesheet" href="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+  <link rel="stylesheet" href="../assets/css/app.css" />
+  <script src="../assets/vendor/js/helpers.js"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/app/config.local.js"></script>
+  
+</head>
+<body>
+<div class="layout-wrapper layout-content-navbar">
+  <div class="layout-container">
+    <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+      <div class="app-brand demo">
+        <a href="index.html" class="app-brand-link app-brand-link-image">
+          <span class="app-brand-logo demo"><img src="../assets/img/branding/logo-horizontal.png" alt="TactiBoard" class="brand-logo-horizontal brand-logo-menu"></span>
+        </a>
+        <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none">
+          <i class="bx bx-chevron-left bx-sm align-middle"></i>
+        </a>
+      </div>
+      <div class="menu-inner-shadow"></div>
+      <ul class="menu-inner py-1">
+        <li class="menu-item"><a href="index.html" class="menu-link" data-menu-page="dashboard"><i class="menu-icon tf-icons bx bx-home-circle"></i><div>Dashboard</div></a></li>
+        <li class="menu-item"><a href="notifications.html" class="menu-link" data-menu-page="notifications"><i class="menu-icon tf-icons bx bx-bell"></i><div>Notifications</div></a></li>
+        <li class="menu-item"><a href="teams.html" class="menu-link" data-menu-page="teams"><i class="menu-icon tf-icons bx bx-group"></i><div>Équipes</div></a></li>
+        <li class="menu-item"><a href="players.html" class="menu-link" data-menu-page="players"><i class="menu-icon tf-icons bx bx-user"></i><div>Joueuses</div></a></li>
+        <li class="menu-item"><a href="player-links.html" class="menu-link" data-menu-page="player-links"><i class="menu-icon tf-icons bx bx-link-alt"></i><div>Liaison comptes</div></a></li>
+        <li class="menu-item"><a href="my-team.html" class="menu-link" data-menu-page="my-team"><i class="menu-icon tf-icons bx bx-shield-quarter"></i><div>Mon équipe</div></a></li>
+        <li class="menu-item"><a href="my-tactics.html" class="menu-link" data-menu-page="my-tactics"><i class="menu-icon tf-icons bx bx-notepad"></i><div>Mes tactiques</div></a></li>
+        <li class="menu-item"><a href="my-sessions.html" class="menu-link" data-menu-page="my-sessions"><i class="menu-icon tf-icons bx bx-calendar"></i><div>Mes séances</div></a></li>
+        <li class="menu-item"><a href="my-matches.html" class="menu-link" data-menu-page="my-matches"><i class="menu-icon tf-icons bx bx-trophy"></i><div>Mes matchs</div></a></li>
+        <li class="menu-item"><a href="my-quizzes.html" class="menu-link" data-menu-page="my-quizzes"><i class="menu-icon tf-icons bx bx-help-circle"></i><div>Mes quiz</div></a></li>
+        <li class="menu-item"><a href="coaches.html" class="menu-link" data-menu-page="coaches"><i class="menu-icon tf-icons bx bx-id-card"></i><div>Coachs</div></a></li>
+        <li class="menu-item"><a href="tactics.html" class="menu-link" data-menu-page="tactics"><i class="menu-icon tf-icons bx bx-notepad"></i><div>Tactiques</div></a></li>
+        <li class="menu-item"><a href="quizzes.html" class="menu-link" data-menu-page="quizzes"><i class="menu-icon tf-icons bx bx-help-circle"></i><div>Quizzes</div></a></li>
+        <li class="menu-item"><a href="sessions.html" class="menu-link" data-menu-page="sessions"><i class="menu-icon tf-icons bx bx-calendar"></i><div>Séances</div></a></li>
+        <li class="menu-item"><a href="matches.html" class="menu-link" data-menu-page="matches"><i class="menu-icon tf-icons bx bx-trophy"></i><div>Matchs</div></a></li>
+      </ul>
+    </aside>
+    <div class="layout-page">
+      <nav class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme" id="layout-navbar">
+        <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
+          <a class="nav-item nav-link px-0 me-xl-4" href="javascript:void(0)"><i class="bx bx-menu bx-sm"></i></a>
+        </div>
+        <div class="navbar-nav-right d-flex align-items-center w-100" id="navbar-collapse">
+          <div class="navbar-nav align-items-center"><div class="nav-item d-none d-md-flex align-items-center"><span class="fw-semibold text-primary navbar-page-title"></span></div></div>
+          <ul class="navbar-nav flex-row align-items-center ms-auto">
+          </ul>
+        </div>
+      </nav>
+      <div class="content-wrapper">
+        <div class="container-xxl flex-grow-1 container-p-y">
+          <div id="page-alert"></div>
+
+
+<div class="row">
+  <div class="col-12 mb-4">
+    <div class="card app-hero-card">
+      <div class="card-body">
+        <h4 class="card-title mb-1" id="portal-title">Mes séances</h4>
+        <p class="mb-0" id="portal-subtitle">Chargement...</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-12" id="portal-content"></div>
+</div>
+
+<script type="module" src="../assets/js/app/page-init.js"></script>
+                    <script type="module" src="../assets/js/app/my-sessions.js"></script>
+
+        </div>
+        <footer class="content-footer footer bg-footer-theme">
+          <div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column">
+            <div class="mb-2 mb-md-0">Projet starter pour gestion tactique de football américain.</div>
+            <div><span class="footer-link me-3">Sneat + Supabase</span></div>
+          </div>
+        </footer>
+        <div class="content-backdrop fade"></div>
+      </div>
+    </div>
+  </div>
+  <div class="layout-overlay layout-menu-toggle"></div>
+</div>
+<script src="../assets/vendor/libs/jquery/jquery.js"></script>
+<script src="../assets/vendor/libs/popper/popper.js"></script>
+<script src="../assets/vendor/js/bootstrap.js"></script>
+<script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+<script src="../assets/vendor/js/menu.js"></script>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>

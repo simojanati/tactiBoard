@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr" class="light-style layout-menu-fixed" dir="ltr" data-theme="theme-default" data-assets-path="../assets/" data-template="vertical-menu-template-free">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+  <title>TactiBoard</title>
+  <meta name="description" content="Tactical Board" />
+  <link rel="icon" type="image/x-icon" href="../assets/img/favicon/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon/favicon-32x32.png" />
+  <link rel="apple-touch-icon" href="../assets/img/favicon/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+(function(){
+  try {
+    var raw = localStorage.getItem('pbm_auth_cache');
+    if (!raw) return;
+    var data = JSON.parse(raw);
+    if (data && data.role) {
+      document.documentElement.dataset.userRole = data.role;
+      document.documentElement.dataset.roleReady = '1';
+    }
+  } catch(e) {}
+})();
+</script>
+  <link rel="stylesheet" href="../assets/vendor/fonts/boxicons.css" />
+  <link rel="stylesheet" href="../assets/vendor/css/core.css" class="template-customizer-core-css" />
+  <link rel="stylesheet" href="../assets/vendor/css/theme-default.css" class="template-customizer-theme-css" />
+  <link rel="stylesheet" href="../assets/css/demo.css" />
+  <link rel="stylesheet" href="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+  <link rel="stylesheet" href="../assets/css/app.css" />
+  <script src="../assets/vendor/js/helpers.js"></script>
+  <script src="../assets/js/config.js"></script>
+  <script src="../assets/js/app/config.local.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+  
+<style id="board-timeline-style">
+  .board-timeline{
+    width:100%;
+    background:#111827;
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:12px;
+    padding:10px 12px;
+    box-sizing:border-box;
+    position:relative;
+    z-index:1;
+    overflow:hidden;
+  }
+  .board-timeline-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+  }
+  .board-timeline-time{
+    min-width:48px;
+    color:#fff;
+    font-weight:600;
+    font-size:0.875rem;
+    text-align:center;
+  }
+  .board-timeline-slider{
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .board-timeline-speed{
+    width:88px;
+    flex:0 0 88px;
+  }
+  @media (max-width: 767.98px){
+    .board-timeline-row{
+      flex-wrap:wrap;
+    }
+    .board-timeline-time{
+      order:3;
+    }
+    .board-timeline-slider{
+      width:100%;
+      order:4;
+      flex-basis:100%;
+    }
+  }
+</style>
+
+</head>
+<body>
+<div class="layout-wrapper layout-content-navbar">
+  <div class="layout-container">
+    <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+      <div class="app-brand demo">
+        <a href="index.html" class="app-brand-link app-brand-link-image">
+          <span class="app-brand-logo demo"><img src="../assets/img/branding/logo-horizontal.png" alt="TactiBoard" class="brand-logo-horizontal brand-logo-menu"></span>
+        </a>
+        <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none"><i class="bx bx-chevron-left bx-sm align-middle"></i></a>
+      </div>
+      <div class="menu-inner-shadow"></div>
+      <ul class="menu-inner py-1">
+        <li class="menu-item"><a href="index.html" class="menu-link" data-menu-page="dashboard"><i class="menu-icon tf-icons bx bx-home-circle"></i><div>Dashboard</div></a></li>
+        <li class="menu-item"><a href="notifications.html" class="menu-link" data-menu-page="notifications"><i class="menu-icon tf-icons bx bx-bell"></i><div>Notifications</div></a></li>
+        <li class="menu-item"><a href="teams.html" class="menu-link" data-menu-page="teams"><i class="menu-icon tf-icons bx bx-group"></i><div>Équipes</div></a></li>
+        <li class="menu-item"><a href="players.html" class="menu-link" data-menu-page="players"><i class="menu-icon tf-icons bx bx-user"></i><div>Joueuses</div></a></li>
+        <li class="menu-item"><a href="player-links.html" class="menu-link" data-menu-page="player-links"><i class="menu-icon tf-icons bx bx-link-alt"></i><div>Liaison comptes</div></a></li>
+        <li class="menu-item"><a href="my-team.html" class="menu-link" data-menu-page="my-team"><i class="menu-icon tf-icons bx bx-shield-quarter"></i><div>Mon équipe</div></a></li>
+        <li class="menu-item"><a href="my-tactics.html" class="menu-link" data-menu-page="my-tactics"><i class="menu-icon tf-icons bx bx-notepad"></i><div>Mes tactiques</div></a></li>
+        <li class="menu-item"><a href="my-sessions.html" class="menu-link" data-menu-page="my-sessions"><i class="menu-icon tf-icons bx bx-calendar"></i><div>Mes séances</div></a></li>
+        <li class="menu-item"><a href="my-matches.html" class="menu-link" data-menu-page="my-matches"><i class="menu-icon tf-icons bx bx-trophy"></i><div>Mes matchs</div></a></li>
+        <li class="menu-item"><a href="my-quizzes.html" class="menu-link" data-menu-page="my-quizzes"><i class="menu-icon tf-icons bx bx-help-circle"></i><div>Mes quiz</div></a></li>
+        <li class="menu-item"><a href="coaches.html" class="menu-link" data-menu-page="coaches"><i class="menu-icon tf-icons bx bx-id-card"></i><div>Coachs</div></a></li>
+        <li class="menu-item"><a href="tactics.html" class="menu-link" data-menu-page="tactics"><i class="menu-icon tf-icons bx bx-notepad"></i><div>Tactiques</div></a></li>
+        <li class="menu-item"><a href="quizzes.html" class="menu-link" data-menu-page="quizzes"><i class="menu-icon tf-icons bx bx-help-circle"></i><div>Quizzes</div></a></li>
+        <li class="menu-item"><a href="sessions.html" class="menu-link" data-menu-page="sessions"><i class="menu-icon tf-icons bx bx-calendar"></i><div>Séances</div></a></li>
+        <li class="menu-item"><a href="matches.html" class="menu-link" data-menu-page="matches"><i class="menu-icon tf-icons bx bx-trophy"></i><div>Matchs</div></a></li>
+      </ul>
+    </aside>
+    <div class="layout-page">
+      <nav class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme" id="layout-navbar">
+        <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none"><a class="nav-item nav-link px-0 me-xl-4" href="javascript:void(0)"><i class="bx bx-menu bx-sm"></i></a></div>
+        <div class="navbar-nav-right d-flex align-items-center w-100" id="navbar-collapse">
+          <div class="navbar-nav align-items-center"><div class="nav-item d-flex align-items-center"><span class="fw-semibold text-primary navbar-page-title d-none d-md-inline-block">Tactical Board</span></div></div>
+        </div>
+      </nav>
+      <div class="content-wrapper">
+        <div class="container-xxl flex-grow-1 container-p-y">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4 board-top-controls">
+            <div>
+              <h4 class="fw-bold py-3 mb-1">Tactical Board</h4>
+              <p class="mb-0 text-muted">Dessine, explique et exporte un schéma tactique pro pour une tactique existante.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+              <a href="tactics.html" class="btn btn-outline-secondary"><i class="bx bx-arrow-back me-1"></i>Retour</a>
+              <button class="btn btn-outline-dark" id="fullscreen-btn" type="button"><i class="bx bx-fullscreen me-1"></i>Plein écran</button>
+              <button class="btn btn-outline-primary" id="presentation-btn" type="button"><i class="bx bx-slideshow me-1"></i>Présentation</button>
+              <button class="btn btn-outline-warning" id="clear-btn" type="button"><i class="bx bx-eraser me-1"></i>Vider</button>
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-secondary btn-sm" id="zoom-out-btn" type="button" title="Zoom -"><i class="bx bx-minus"></i></button>
+                <span class="badge bg-label-primary d-inline-flex align-items-center justify-content-center" id="zoom-badge">100%</span>
+                <button class="btn btn-outline-secondary btn-sm" id="zoom-in-btn" type="button" title="Zoom +"><i class="bx bx-plus"></i></button>
+                <button class="btn btn-outline-secondary btn-sm" id="zoom-reset-btn" type="button" title="Reset zoom"><i class="bx bx-reset"></i></button>
+              </div>
+              <button class="btn btn-outline-primary" id="export-btn" type="button"><i class="bx bx-download me-1"></i>Exporter PNG</button>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button class="btn btn-primary" id="save-btn" type="button"><i class="bx bx-save me-1"></i>Sauvegarder</button>
+                <span id="save-progress-chip" class="badge bg-label-secondary d-none"></span>
+              </div>
+            </div>
+          </div>
+          <div id="page-alert"></div>
+
+          <div class="alert alert-info d-md-none board-mobile-hint" role="alert">
+            <i class="bx bx-mobile-alt me-1"></i>Mode mobile allégé: pour une édition avancée, utilise de préférence une tablette ou un ordinateur.
+          </div>
+          <div class="col-12">
+            <div class="card" id="tactical-board-host">
+                <div class="card-body pb-0 board-meta-row">
+                  <div class="row g-3">
+                    <div class="col-lg-6">
+                      <label class="form-label">Tactique liée</label>
+                      <select id="tactic-select" class="form-select"></select>
+                    </div>
+                    <div class="col-lg-6">
+                      <label class="form-label">Équipe</label>
+                      <div class="form-control bg-lighter" id="board-team-label">—</div>
+                    </div>
+                    <div class="col-12">
+                      <div class="row g-3 align-items-end board-diagram-row">
+                        <div class="col-lg-6">
+                          <label class="form-label">Diagramme</label>
+                          <div class="diagram-toolbar-row">
+                            <select id="diagram-select" class="form-select"></select>
+                            <div class="diagram-toolbar-actions">
+                              <button class="btn btn-outline-primary btn-sm" id="diagram-new-btn" type="button" title="Nouveau"><i class="bx bx-plus"></i></button>
+                              <button class="btn btn-outline-danger btn-sm" id="diagram-delete-btn" type="button" title="Supprimer"><i class="bx bx-trash"></i></button>
+                              <button class="btn btn-outline-warning btn-sm" id="diagram-primary-btn" type="button" title="Principal"><i class="bx bx-star"></i></button>
+                            </div>
+
+                    <div id="timeline-container" class="board-timeline mt-3">
+                      <div class="board-timeline-row">
+                        <button id="timeline-play" class="btn btn-sm btn-primary" type="button" title="Play">▶</button>
+                        <button id="timeline-pause" class="btn btn-sm btn-outline-secondary" type="button" title="Pause">⏸</button>
+                        <span id="timeline-time" class="board-timeline-time">0.0s</span>
+                        <input id="timeline-slider" class="board-timeline-slider" type="range" min="0" max="1000" value="0" step="1">
+                        <select id="timeline-speed" class="form-select form-select-sm board-timeline-speed">
+                          <option value="0.5">0.5x</option>
+                          <option value="1" selected>1x</option>
+                          <option value="1.5">1.5x</option>
+                          <option value="2">2x</option>
+                        </select>
+                      </div>
+                    </div>
+
+
+                          </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                          <label class="form-label">Nom du diagramme</label>
+                          <input id="diagram-title-input" class="form-control" placeholder="Ex: Variante droite" />
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                          <label class="form-label">Dernière mise à jour</label>
+                          <div class="form-control bg-lighter" id="diagram-date-label">Aucun</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-3 board-animation-controls">
+  <button class="btn btn-danger btn-sm" id="animation-start-btn" type="button"><i class="bx bx-radio-circle-marked me-1"></i>Start</button>
+  <button class="btn btn-outline-secondary btn-sm" id="animation-stop-btn" type="button" disabled><i class="bx bx-stop-circle me-1"></i>Terminer</button>
+  <button class="btn btn-outline-primary btn-sm" id="animation-preview-btn" type="button" disabled><i class="bx bx-play-circle me-1"></i>Preview</button>
+  <button class="btn btn-outline-dark btn-sm" id="animation-reset-btn" type="button" disabled><i class="bx bx-reset me-1"></i>Reset</button>
+  <button class="btn btn-outline-success btn-sm" id="animation-export-gif-btn" type="button" disabled><i class="bx bx-film me-1"></i>Exporter WebM</button>
+  <span class="badge bg-label-secondary" id="animation-status-badge">Prêt</span>
+  <span class="text-muted small" id="animation-help-text">Astuce: clique sur Start, bouge les joueuses/ballon sur le terrain, puis termine pour générer la vidéo.</span>
+</div>
+<div class="board-layout d-flex gap-3 flex-column flex-lg-row">
+                    <div class="board-toolbar-col">
+                      <div class="board-sidebar board-toolbar h-100 collapsed" id="board-toolbar">
+                        <div class="d-flex justify-content-between align-items-center mb-2 board-toolbar-head">
+                          <div class="small text-uppercase text-muted fw-semibold board-toolbar-title">Outils</div>
+                          <button class="btn btn-sm btn-icon btn-outline-secondary" id="toolbar-toggle-btn" type="button" title="Agrandir/réduire">
+                            <i class="bx bx-chevrons-right"></i>
+                          </button>
+                        </div>
+                        <div class="d-grid gap-2 mb-3" id="tool-buttons">
+                          <button class="btn btn-outline-primary board-tool-btn active" data-tool="select" type="button" title="Sélection"><i class="bx bx-pointer"></i><span class="tool-label">Sélection</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="pan" type="button" title="Déplacer la vue"><i class="bx bx-move"></i><span class="tool-label">Déplacer</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="offense" type="button" title="Joueuse attaque"><i class="bx bx-circle"></i><span class="tool-label">Attaque</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="defense" type="button" title="Joueuse défense"><i class="bx bx-x-circle"></i><span class="tool-label">Défense</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="ball" type="button" title="Ballon football américain"><span class="board-ball-icon" aria-hidden="true">🏈</span><span class="tool-label">Ballon</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="text" type="button" title="Texte"><i class="bx bx-text"></i><span class="tool-label">Texte</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="line" type="button" title="Ligne"><i class="bx bx-minus"></i><span class="tool-label">Ligne</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="arrow" type="button" title="Flèche droite"><i class="bx bx-right-arrow-alt"></i><span class="tool-label">Flèche</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="curved-arrow" type="button" title="Flèche courbe"><i class="bx bx-trending-up"></i><span class="tool-label">Courbe</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="pass-arrow" type="button" title="Flèche passe"><i class="bx bx-transfer-alt"></i><span class="tool-label">Passe</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="zone" type="button" title="Zone rouge"><i class="bx bx-shape-square"></i><span class="tool-label">Zone</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="path" type="button" title="Trajet joueuse"><i class="bx bx-git-branch"></i><span class="tool-label">Path</span></button>
+                        </div>
+                        <div id="board-path-hint" class="small text-muted mb-3">Path: sélectionner une joueuse, choisir <strong>Path</strong>, puis cliquer sur le terrain pour tracer un trajet.</div>
+                        <div class="small text-uppercase text-muted fw-semibold mb-2 board-toolbar-title">Templates</div>
+                        <div class="d-grid gap-2 mb-3 board-quick-actions">
+                          <button class="btn btn-outline-primary board-quick-btn" id="template-offense-btn" type="button" title="Template Offense"><i class="bx bx-shield-quarter"></i><span class="tool-label">Offense</span></button>
+                          <button class="btn btn-outline-danger board-quick-btn" id="template-defense-btn" type="button" title="Template Defense"><i class="bx bx-shield-x"></i><span class="tool-label">Defense</span></button>
+                          <button class="btn btn-outline-warning board-quick-btn" id="template-special-btn" type="button" title="Template Special Teams"><i class="bx bx-star"></i><span class="tool-label">Special</span></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="board-canvas-col flex-grow-1">
+                      <div class="board-canvas-wrap" id="board-canvas-wrap">
+                        <div class="presentation-bar d-none" id="presentation-bar">
+                          <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge bg-label-light text-dark" id="presentation-title">Tactical Board</span>
+                            <button class="btn btn-sm btn-light" id="presentation-laser-btn" type="button"><i class="bx bx-radio-circle-marked me-1"></i>Laser</button>
+                            <button class="btn btn-sm btn-light" id="presentation-zoom-out-btn" type="button"><i class="bx bx-minus"></i></button>
+                            <span class="badge bg-label-primary d-inline-flex align-items-center justify-content-center" id="presentation-zoom-badge">100%</span>
+                            <button class="btn btn-sm btn-light" id="presentation-zoom-in-btn" type="button"><i class="bx bx-plus"></i></button>
+                            <button class="btn btn-sm btn-light" id="presentation-zoom-reset-btn" type="button"><i class="bx bx-reset"></i></button>
+                          </div>
+                          <button class="btn btn-sm btn-danger" id="presentation-exit-btn" type="button"><i class="bx bx-x me-1"></i>Quitter</button>
+                        </div>
+                        <div class="presentation-laser d-none" id="presentation-laser"></div>
+                        <div class="presentation-stage d-none" id="presentation-stage">
+                          <img id="presentation-image" alt="Présentation tactique" />
+                        </div>
+                        <div class="board-canvas-overlay-controls">
+                          <div class="board-overlay-group d-flex gap-2">
+                            <button class="btn btn-sm btn-light board-overlay-btn" id="board-fit-btn" type="button" title="Recentrer le terrain"><i class="bx bx-center"></i></button>
+                            <button class="btn btn-sm btn-light board-overlay-btn" id="overlay-zoom-out-btn" type="button" title="Zoom -"><i class="bx bx-minus"></i></button>
+                            <span class="badge bg-label-primary d-inline-flex align-items-center justify-content-center" id="overlay-zoom-badge">100%</span>
+                            <button class="btn btn-sm btn-light board-overlay-btn" id="overlay-zoom-in-btn" type="button" title="Zoom +"><i class="bx bx-plus"></i></button>
+                            <button class="btn btn-sm btn-light board-overlay-btn" id="overlay-zoom-reset-btn" type="button" title="Reset zoom"><i class="bx bx-reset"></i></button>
+                          </div>
+                        </div>
+                        <canvas id="tactical-canvas" width="1200" height="700"></canvas>
+                      </div>
+                    </div>
+                    <div class="board-props-col">
+                      <div class="board-sidebar board-properties-sidebar h-100 is-empty" id="board-properties-sidebar">
+                        <div class="small text-uppercase text-muted fw-semibold mb-2">Élément sélectionné</div>
+                        <div id="object-empty-state" class="text-muted small mb-3">Sélectionne un élément pour modifier son label ou sa couleur.</div>
+                        <div id="object-properties" class="d-none">
+                          <div class="mb-3">
+                            <label class="form-label">Label</label>
+                            <input type="text" class="form-control" id="prop-label" placeholder="Ex: WR / Cover 2" />
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Couleur</label>
+                            <input type="color" class="form-control form-control-color w-100" id="prop-color" value="#696cff" />
+                          </div>
+                          <div class="mb-3">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                              <label class="form-label mb-0">Taille police</label>
+                              <span class="board-range-value" id="prop-fontsize-value">16</span>
+                            </div>
+                            <input type="range" min="10" max="36" value="16" class="form-range board-range" id="prop-fontsize" />
+                          </div>
+                          <div class="mb-0">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                              <label class="form-label mb-0">Épaisseur</label>
+                              <span class="board-range-value" id="prop-stroke-value">3</span>
+                            </div>
+                            <input type="range" min="1" max="10" value="3" class="form-range board-range" id="prop-stroke" />
+                          </div>
+                        </div>
+                        <hr>
+                        <div class="small text-uppercase text-muted fw-semibold mb-2">Actions rapides</div>
+                        <div class="d-grid gap-2 mb-3 board-side-actions">
+                          <button class="btn btn-outline-info board-side-btn" id="duplicate-selected-btn" type="button" title="Dupliquer sélection"><i class="bx bx-copy me-1"></i>Dupliquer</button>
+                          <button class="btn btn-outline-primary board-side-btn" id="copy-selected-btn" type="button" title="Copier sélection"><i class="bx bx-copy-alt me-1"></i>Copier</button>
+                          <button class="btn btn-outline-success board-side-btn" id="paste-selected-btn" type="button" title="Coller"><i class="bx bx-paste me-1"></i>Coller</button>
+                          <button class="btn btn-outline-danger board-side-btn" id="delete-selected-btn" type="button" title="Supprimer sélection"><i class="bx bx-trash me-1"></i>Supprimer</button>
+                          <a class="btn btn-outline-secondary board-side-btn" id="open-tactic-btn" href="tactic-detail.html" title="Voir la tactique"><i class="bx bx-link-external me-1"></i>Ouvrir tactique</a>
+                        </div>
+                        <hr>
+                        <div class="small text-uppercase text-muted fw-semibold mb-2">Conseils</div>
+                        <ul class="small text-muted ps-3 mb-0 board-tips">
+                          <li>PC / tablette: glisse-dépose pour bouger les éléments.</li>
+                          <li>Flèche / ligne / zone: clique et glisse sur le terrain.</li>
+                          <li>Mobile: tu peux consulter, bouger et exporter; le dessin complexe est plus confortable sur tablette/PC.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <script type="module" src="../assets/js/app/page-init.js"></script>
+          <script type="module" src="../assets/js/app/tactical-board.js"></script>
+        </div>
+        <footer class="content-footer footer bg-footer-theme"><div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column"><div class="mb-2 mb-md-0">Projet starter pour gestion tactique de football américain.</div><div><span class="footer-link me-3">Sneat + Supabase</span></div></div></footer>
+        <div class="content-backdrop fade"></div>
+      </div>
+    </div>
+  </div>
+  <div class="layout-overlay layout-menu-toggle"></div>
+</div>
+<script src="../assets/vendor/libs/jquery/jquery.js"></script>
+<script src="../assets/vendor/libs/popper/popper.js"></script>
+<script src="../assets/vendor/js/bootstrap.js"></script>
+<script src="../assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+<script src="../assets/vendor/js/menu.js"></script>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>
