@@ -1,8 +1,8 @@
 import { activateMenu, escapeHtml, getQueryParam, nl2br, setAppTitle, showAlert, supabase } from './common.js';
 import { getPortalContext, matchAssignmentsForPlayer, markTacticRead, buildReadState } from './portal-common.js';
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
-setAppTitle('Détail tactique');
-const tt = (k, f='') => window.t ? window.t(k, f) : f;
+setAppTitle(tt('page.tactic_detail', 'Détail tactique'));
 activateMenu('tactics');
 
 const id = getQueryParam('id');
@@ -304,22 +304,16 @@ if (!id) {
       : (tactic.diagram_image_url || '');
     let tacticDiagramHtml = `<div class="text-muted">${tt('tactic.no_linked_image', 'Aucune image liée à cette tactique.')}</div>`;
     if (primaryDiagramVideoUrl) {
-      const editBoardAction = canEditBoard
-        ? `<a class="btn btn-outline-dark btn-sm" href="tactical-board.html?id=${tactic.id}${primaryDiagram?.id ? `&diagramId=${primaryDiagram.id}` : ''}">${tt('tactic.edit_board', 'Modifier dans Board')}</a>`
-        : '';
-      tacticDiagramHtml = `
-        <video id="td-primary-video" class="img-fluid rounded border w-100" src="${primaryDiagramVideoUrl}" playsinline preload="metadata" controls></video>
+            tacticDiagramHtml = `
+        <video id="td-primary-video" class="img-fluid rounded border w-100 ${diagramMediaOrientationClassV940(primaryDiagram)}" src="${primaryDiagramVideoUrl}" playsinline preload="metadata" controls></video>
         <div class="mt-3 d-flex flex-wrap gap-2 justify-content-center">
           <a class="btn btn-outline-secondary btn-sm" href="${primaryDiagramVideoUrl}" target="_blank">WebM</a>
           ${primaryDiagramImageUrl ? `<a class="btn btn-outline-primary btn-sm" href="${primaryDiagramImageUrl}" target="_blank">${tt('tactic.image', 'Image')}</a>` : ''}
-          ${editBoardAction}
+          
         </div>`;
     } else if (primaryDiagramImageUrl) {
       const openImageLabel = tt('tactic.open_image', "Ouvrir l'image");
-      const editBoardAction = canEditBoard
-        ? `<a class="btn btn-outline-dark btn-sm" href="tactical-board.html?id=${tactic.id}${primaryDiagram?.id ? `&diagramId=${primaryDiagram.id}` : ''}">${tt('tactic.edit_board', 'Modifier dans Board')}</a>`
-        : '';
-      tacticDiagramHtml = `<img src="${primaryDiagramImageUrl}" class="img-fluid rounded border" alt="Diagramme tactique"><div class="mt-3 d-flex flex-wrap gap-2 justify-content-center"><a class="btn btn-outline-primary btn-sm" href="${primaryDiagramImageUrl}" target="_blank">${openImageLabel}</a>${editBoardAction}</div>`;
+            tacticDiagramHtml = `<img src="${primaryDiagramImageUrl}" class="img-fluid rounded border w-100 ${diagramMediaOrientationClassV940(primaryDiagram)}" alt="Diagramme tactique"><div class="mt-3 d-flex flex-wrap gap-2 justify-content-center"><a class="btn btn-outline-primary btn-sm" href="${primaryDiagramImageUrl}" target="_blank">${openImageLabel}</a></div>`;
     }
 
     document.getElementById('page-title').textContent = tactic.title || tt('page.tactic_detail', 'Détail tactique');
@@ -461,10 +455,10 @@ if (!id) {
           const diagramVideoUrl = getAnimationVideoUrl(payload);
           const mediaHtml = diagramVideoUrl
             ? `<div class="border-bottom bg-dark p-2">
-                 <video id="td-linked-video-${diagram.id}" data-td-timeline="td-linked-${diagram.id}" class="w-100 rounded" style="display:block;aspect-ratio:16/9;object-fit:cover;background:#0f7c3d;" src="${diagramVideoUrl}" playsinline preload="metadata"></video>
+                 <video id="td-linked-video-${diagram.id}" data-td-timeline="td-linked-${diagram.id}" class="w-100 rounded ${diagramMediaOrientationClassV940(diagram)}" style="display:block;aspect-ratio:16/9;object-fit:cover;background:#0f7c3d;" src="${diagramVideoUrl}" playsinline preload="metadata"></video>
                  ${tdTimelineHtml(`td-linked-${diagram.id}`)}
                </div>`
-            : (diagram.image_url ? `<img src="${diagram.image_url}" class="card-img-top" alt="${escapeHtml(diagram.title || tt('tactic.diagram', 'Diagramme'))}" style="aspect-ratio:16/9;object-fit:cover;">` : '');
+            : (diagram.image_url ? `<img src="${diagram.image_url}" class="card-img-top" alt="${escapeHtml(diagram.title || tt('tactic.diagram', 'Diagramme'))}" style="aspect-ratio:${diagramOrientationFromJsonV940(diagram) === 'vertical' ? '9/16' : '16/9'};object-fit:contain;">` : '');
           return `
           <div class="col-md-6 col-xl-4">
             <div class="card border h-100">
@@ -480,14 +474,15 @@ if (!id) {
                 <div class="small text-muted mb-2">${diagram.updated_at ? new Date(diagram.updated_at).toLocaleString() : '—'}</div>
                 <div class="d-flex flex-wrap gap-2">
                   
-                  ${['admin','coach'].includes(ctx.role) ? `<a class="btn btn-sm btn-outline-dark" href="tactical-board.html?id=${tactic.id}&diagramId=${diagram.id}">${tt('tactic.edit_board', 'Modifier dans Board')}</a>` : ''}
+                  ${['admin','coach'].includes(ctx.role) ? `` : ''}
                   ${diagram.image_url ? `<a class="btn btn-sm btn-outline-primary" href="${diagram.image_url}" target="_blank">${tt('tactic.image', 'Image')}</a>` : ''}${diagramVideoUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${diagramVideoUrl}" target="_blank">WebM</a>` : ''}
                 </div>
               </div>
             </div>
           </div>`;
         }).join('')}</div>`;
-        try { tdBindPrimaryAndLinkedTimelines(diagramsListHost); } catch (e) { console.warn(e); }
+        try { tdBindPrimaryAndLinkedTimelines(diagramsListHost);
+  try { applySavedOrientationMediaClassesV941(document); } catch (e) { console.warn(e); } } catch (e) { console.warn(e); }
         await initAnimatedDiagramPreviews(diagrams);
       } else {
         diagramsListHost.innerHTML = `<div class="text-muted">${tt('tactic.no_linked_diagram', 'Aucun diagramme lié pour le moment.')}</div>`;
@@ -961,3 +956,53 @@ function tdBindPrimaryAndLinkedTimelines(scope = document) {
     tdForceLoadVideo(sideVideo);
   }
 }
+
+
+// diagramOrientationFromJsonV940
+function diagramOrientationFromJsonV940(diagram) {
+  try {
+    const payload = parseDiagramPayload(diagram?.diagram_json);
+    return payload?.board?.boardOrientation || payload?.animation?.boardOrientation || 'horizontal';
+  } catch (e) {
+    return 'horizontal';
+  }
+}
+
+function diagramMediaOrientationClassV940(diagram) {
+  return diagramOrientationFromJsonV940(diagram) === 'vertical' ? 'diagram-media-vertical' : 'diagram-media-horizontal';
+}
+
+
+// applySavedOrientationMediaClassesV941
+function applySavedOrientationMediaClassesV941(scope = document) {
+  try {
+    scope.querySelectorAll('.diagram-media-vertical').forEach((el) => {
+      const card = el.closest('.card');
+      if (card) card.classList.add('diagram-card-vertical');
+    });
+    scope.querySelectorAll('.diagram-media-horizontal').forEach((el) => {
+      const card = el.closest('.card');
+      if (card) card.classList.add('diagram-card-horizontal');
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  try { applySavedOrientationMediaClassesV941(document); } catch (e) { console.warn(e); }
+});
+
+
+document.addEventListener('app:language-changed', () => {
+  try {
+    if (typeof loadTacticDetails === 'function') {
+      loadTacticDetails().catch(console.error);
+    } else if (typeof loadTactic === 'function') {
+      loadTactic().catch(console.error);
+    } else {
+      location.reload();
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+});

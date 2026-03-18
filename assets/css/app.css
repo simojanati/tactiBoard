@@ -25,7 +25,6 @@
 .card-tools{display:flex;gap:.5rem;align-items:center;}
 .form-panel-sticky{scroll-margin-top:100px;}
 
-
 .assignment-builder-toolbar{border-bottom:1px dashed rgba(67,89,113,.15);padding-bottom:.5rem;}
 .assignment-row .form-label{font-size:.75rem;margin-bottom:.35rem;color:#8592a3;}
 .actions-cell{display:flex;justify-content:flex-end;gap:.35rem;flex-wrap:wrap;}
@@ -38,11 +37,9 @@
 .gameplan-card .list-group-item{display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;}
 .gameplan-card .list-group-item .meta{font-size:.75rem;color:#8592a3;}
 
-
 .form-panel-hidden{display:none!important}
 .auth-note{font-size:.85rem;color:#8592a3}
 #user-box .dropdown-menu{min-width:220px}
-
 
 html:not([data-role-ready="1"]) [data-menu-page],
 html:not([data-role-ready="1"]) [data-auth="edit"],
@@ -54,7 +51,6 @@ html:not([data-role-ready="1"]) #edit-link,
 html:not([data-role-ready="1"]) #form-panel {
   display: none !important;
 }
-
 
 html[data-user-role="admin"] [data-menu-page],
 html[data-user-role="coach"] [data-menu-page],
@@ -84,7 +80,6 @@ html[data-user-role="player"] [href="coaches.html"] { display:none !important; }
 html[data-user-role="player"] [href="sessions.html"],
 html[data-user-role="player"] [href="matches.html"] { display:none !important; }
 
-
 html:not([data-role-ready="1"]) .menu-inner .menu-item{display:none !important;}
 html:not([data-role-ready="1"]) .menu-inner .menu-item:first-child{display:block !important;}
 html[data-user-role="coach"] [href="my-tactics.html"],
@@ -93,7 +88,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
 .login-loading .btn{pointer-events:none;}
 
 .btn-loading-center{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;}
-
 
 .app-brand-link{display:flex;align-items:center;min-width:0;}
 .app-brand-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
@@ -160,7 +154,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   .board-sidebar{padding:.85rem;}
 }
 
-
 .board-layout{align-items:stretch;}
 .board-toolbar{min-width:84px;transition:all .2s ease;overflow:hidden;}
 .board-toolbar.collapsed{padding:.75rem .55rem;}
@@ -193,7 +186,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   .board-canvas-wrap{min-height:60vh;}
 }
 
-
 .board-layout{display:flex;align-items:stretch;gap:1rem;}
 .board-toolbar-col{flex:0 0 92px;transition:flex-basis .2s ease,width .2s ease;min-width:92px;}
 .board-toolbar-col.is-expanded{flex-basis:220px;min-width:220px;}
@@ -211,7 +203,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   .board-toolbar-col,.board-toolbar-col.is-expanded,.board-props-col{flex-basis:auto;min-width:0;}
 }
 
-
 .board-range-value{display:inline-flex;align-items:center;justify-content:center;min-width:2.5rem;padding:.18rem .5rem;border-radius:999px;background:rgba(105,108,255,.12);color:#696cff;font-size:.78rem;font-weight:700;}
 .board-range{--board-range:#696cff;accent-color:var(--board-range);height:1.25rem;}
 .board-range::-webkit-slider-runnable-track{height:.45rem;background:linear-gradient(90deg, rgba(105,108,255,.95), rgba(3,195,236,.95));border-radius:999px;border:none;}
@@ -222,16 +213,13 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
 .board-overlay-btn{pointer-events:auto;border-radius:999px;box-shadow:0 8px 20px rgba(67,89,113,.16);background:rgba(255,255,255,.96);border:1px solid rgba(67,89,113,.1);}
 .board-overlay-btn:hover{background:#fff;}
 
-
 .board-overlay-group .board-overlay-btn{min-width:38px;padding:.42rem .6rem;}
 #zoom-badge{font-size:.78rem;min-width:4rem;justify-content:center;}
 .board-canvas-wrap.is-panning{cursor:grabbing;}
 
-
 #overlay-zoom-badge{pointer-events:auto;min-width:4rem;border:1px solid rgba(67,89,113,.1);box-shadow:0 8px 20px rgba(67,89,113,.12);background:rgba(255,255,255,.96);color:#696cff;}
 .board-canvas-overlay-controls .board-overlay-group{align-items:center;}
 #zoom-badge{min-width:4rem;}
-
 
 .board-presentation-mode #tactical-board-host{position:fixed;inset:0;z-index:2500;margin:0;border-radius:0;background:#0b1220;}
 .board-presentation-mode .layout-menu,
@@ -258,7 +246,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
 }
 
 .board-presentation-mode .board-canvas-overlay-controls{display:none !important;}
-
 
 .presentation-stage{position:absolute;inset:0;z-index:5;overflow:hidden;background:#0b1220;cursor:grab;}
 .presentation-stage img{position:absolute;left:0;top:0;transform-origin:top left;max-width:none;user-select:none;-webkit-user-drag:none;pointer-events:none;}
@@ -309,7 +296,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
 .board-toolbar .small.text-uppercase{display:flex !important;align-items:center !important;flex:0 0 auto !important;margin:0 .25rem 0 .35rem !important;}
 .board-toolbar .small.text-uppercase::after{content:"";display:block;width:1px;height:26px;background:rgba(67,89,113,.14);margin-left:.55rem;}
 @media (max-width: 991.98px){.board-toolbar .tool-label{display:none !important;}.board-toolbar .board-tool-btn,.board-toolbar .board-quick-btn{padding:.6rem .75rem !important;}}
-
 
 /* Final tactical board toolbar width fix */
 .board-layout{display:grid !important;grid-template-columns:minmax(0,1fr) 280px !important;grid-template-areas:'toolbar toolbar' 'canvas props' !important;gap:1rem !important;align-items:start !important;}
@@ -428,7 +414,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   }
   .board-toolbar .tool-label{display:none !important;}
 }
-
 
 /* Mobile light mode for Tactical Board */
 .board-mobile-hint{border-radius:12px;margin-bottom:.75rem;}
@@ -583,8 +568,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   .board-side-actions{grid-template-columns:1fr 1fr;}
 }
 
-
-
 /* WB3 diagram header layout */
 .board-meta-row .form-label{margin-bottom:.45rem !important;}
 .board-diagram-row{margin-top:.1rem !important;}
@@ -598,7 +581,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   .diagram-toolbar-actions{flex-wrap:wrap !important;}
 }
 
-
 /* Match game plan */
 .match-gameplan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;}
 .match-diagram-preview-wrap{display:flex;justify-content:center;align-items:center;background:#f8f9fa;border-radius:.75rem;padding:.75rem;min-height:180px;border-bottom:1px solid rgba(67,89,113,.08);}
@@ -608,7 +590,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   .match-diagram-preview-wrap{min-height:140px;padding:.5rem;}
   .match-diagram-preview{width:100% !important;max-width:100%;max-height:none;}
 }
-
 
 .brand-logo-icon{width:34px;height:34px;object-fit:contain;display:block;}
 .brand-logo-horizontal{max-height:42px;max-width:220px;object-fit:contain;display:block;}
@@ -623,7 +604,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
 .team-logo-lg{width:84px;height:84px;object-fit:contain;border-radius:18px;background:#fff;border:1px solid rgba(16,35,63,.08);padding:6px;}
 .team-title-wrap{display:flex;align-items:center;gap:.85rem;}
 .team-logo-upload-preview{width:72px;height:72px;object-fit:contain;border-radius:16px;background:#fff;border:1px solid rgba(16,35,63,.1);padding:6px;}
-
 
 .app-brand-link-image{display:flex;align-items:center;min-height:56px;width:100%;}
 .brand-logo-menu{max-width:170px;max-height:34px;object-fit:contain;display:block;}
@@ -643,7 +623,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   .brand-logo-menu{max-width:138px;max-height:28px;}
 }
 
-
 .navbar-mobile-brand{display:flex;align-items:center;}
 @media (min-width: 1200px){
   .navbar-mobile-brand{display:none !important;}
@@ -652,7 +631,6 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   .navbar-mobile-brand{display:flex !important;}
 }
 .coach-avatar-sm{width:34px;height:34px;border-radius:50%;object-fit:cover;flex:0 0 34px;border:1px solid rgba(16,35,63,.12);background:#fff;}
-
 
 .navbar-quick-action{display:flex;align-items:center;}
 #notifications-bell .btn{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:42px;border-radius:12px;}
@@ -669,4 +647,513 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
   #notifications-bell .btn{min-width:38px;height:38px;border-radius:10px;}
   .language-switcher-wrap{border-radius:12px;}
   .language-switcher-select{min-width:62px;font-size:.82rem;}
+}
+
+/* tactical-board-mobile-fix-v9.1.5 */
+@media (max-width: 767.98px) {
+  .board-toolbar,
+  .board-toolbar .d-flex,
+  .board-toolbar .btn-toolbar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .board-tool-btn {
+    min-width: 44px !important;
+    width: 44px;
+    height: 40px;
+    padding: 0.45rem !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 0 !important;
+    flex: 0 0 auto;
+  }
+
+  .board-tool-btn .tool-label {
+    display: none !important;
+  }
+
+  .board-tool-btn i,
+  .board-tool-btn svg {
+    font-size: 1rem;
+    margin: 0 !important;
+  }
+
+  .board-actions .btn,
+  .quick-actions .btn,
+  .board-props-actions .btn,
+  .board-props-col .btn {
+    min-width: 40px;
+    width: 40px;
+    height: 40px;
+    padding: 0.45rem !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 0 !important;
+  }
+
+  .board-actions .btn .btn-label,
+  .quick-actions .btn .btn-label,
+  .board-props-actions .btn .btn-label,
+  .board-props-col .btn .btn-label {
+    display: none !important;
+  }
+
+  .board-actions .btn i,
+  .quick-actions .btn i,
+  .board-props-actions .btn i,
+  .board-props-col .btn i {
+    margin: 0 !important;
+    font-size: 1rem;
+  }
+
+  .board-props-col {
+    display: block !important;
+    margin-top: 1rem;
+  }
+
+  .board-props-col .card,
+  .board-props-col .board-properties-card,
+  .board-props-col .selected-element-card {
+    display: block !important;
+  }
+
+  .board-layout,
+  .tactical-board-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem;
+  }
+
+  .board-main-col,
+  .board-props-col,
+  .board-canvas-col {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+
+  .board-toolbar-title {
+    display: none !important;
+  }
+
+  [data-tool="path"] {
+    position: relative;
+  }
+
+  [data-tool="path"]:hover::after,
+  [data-tool="path"]:focus::after,
+  [data-tool="path"].active::after {
+    content: attr(title);
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(100% + 8px);
+    background: rgba(17,24,39,.96);
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: .72rem;
+    line-height: 1.25;
+    white-space: normal;
+    width: 180px;
+    text-align: center;
+    z-index: 25;
+    box-shadow: 0 8px 20px rgba(0,0,0,.2);
+  }
+
+  [data-tool="path"]:hover::before,
+  [data-tool="path"]:focus::before,
+  [data-tool="path"].active::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(100% + 2px);
+    border: 6px solid transparent;
+    border-top-color: rgba(17,24,39,.96);
+    z-index: 26;
+  }
+}
+
+/* mobile-board-actions-relayout-v9.1.6 */
+.mobile-board-actions-bar{
+  display:none;
+}
+
+@media (max-width: 767.98px) {
+  .mobile-board-actions-bar{
+    display:flex !important;
+    align-items:center;
+    gap:.5rem;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding:.5rem 0 .75rem;
+    margin:0 0 .5rem;
+  }
+
+  .mobile-board-actions-bar .btn{
+    min-width:40px;
+    width:40px;
+    height:40px;
+    padding:.45rem !important;
+    display:inline-flex !important;
+    align-items:center;
+    justify-content:center;
+    gap:0 !important;
+    flex:0 0 auto;
+  }
+
+  .mobile-board-actions-bar .btn .btn-label,
+  .mobile-board-actions-bar .btn span:not(.bx):not(.icon):not([class*="icon"]){
+    display:none !important;
+  }
+
+  .mobile-board-actions-bar .btn i{
+    margin:0 !important;
+    font-size:1rem;
+  }
+
+  .board-props-col .quick-actions,
+  .board-props-col .board-actions,
+  .board-props-col .board-props-actions{
+    display:none !important;
+  }
+
+  .board-props-col .card .tips,
+  .board-props-col .card .board-tips,
+  .board-props-col [data-role="tips"]{
+    display:block;
+  }
+}
+
+/* mobile-board-actions-relayout-v9.1.7 */
+.mobile-board-actions-bar{
+  display:none;
+}
+
+@media (max-width: 991.98px) {
+  .mobile-board-actions-bar{
+    display:flex !important;
+    align-items:center;
+    gap:.5rem;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding:.5rem 0 .75rem;
+    margin:.25rem 0 .75rem;
+    width:100%;
+  }
+
+  .mobile-board-actions-bar .btn{
+    min-width:40px;
+    width:40px;
+    height:40px;
+    padding:.45rem !important;
+    display:inline-flex !important;
+    align-items:center;
+    justify-content:center;
+    gap:0 !important;
+    flex:0 0 auto;
+  }
+
+  .mobile-board-actions-bar .btn .btn-label,
+  .mobile-board-actions-bar .btn span:not(.bx):not([class*="bx-"]):not([class*="icon"]){
+    display:none !important;
+  }
+
+  .mobile-board-actions-bar .btn i,
+  .mobile-board-actions-bar .btn [class*="bx-"]{
+    margin:0 !important;
+    font-size:1rem;
+  }
+
+  .board-layout,
+  .tactical-board-layout{
+    display:flex !important;
+    flex-wrap:wrap !important;
+  }
+
+  .board-main-col,
+  .board-canvas-col{
+    order:2;
+    width:100% !important;
+    max-width:100% !important;
+    flex:0 0 100% !important;
+  }
+
+  .board-props-col{
+    order:3;
+    width:100% !important;
+    max-width:100% !important;
+    flex:0 0 100% !important;
+    margin-top:.75rem !important;
+  }
+
+  .board-props-col .quick-actions,
+  .board-props-col .board-actions,
+  .board-props-col .board-props-actions{
+    display:none !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .mobile-board-actions-bar{
+    display:none !important;
+  }
+}
+
+/* toolbar-actions-move-from-props-v9.1.9 */
+.board-toolbar-divider{
+  width:1px;
+  height:28px;
+  background:rgba(0,0,0,.12);
+  margin:0 .25rem;
+  flex:0 0 auto;
+}
+.board-toolbar-action{
+  flex:0 0 auto;
+}
+@media (max-width: 991.98px){
+  .board-toolbar-divider{
+    display:none;
+  }
+}
+.board-props-col .quick-actions,
+.board-props-col .board-actions,
+.board-props-col .board-props-actions{
+  display:none !important;
+}
+
+/* toolbar-actions-cleanup-v9.2.0 */
+.board-toolbar-action.active,
+.board-toolbar-action:active,
+.board-toolbar-action:focus {
+  box-shadow: none !important;
+}
+
+#toolbar-duplicate-btn{border-color:#0dcaf0 !important;color:#0dcaf0 !important;}
+#toolbar-copy-btn{border-color:#696cff !important;color:#696cff !important;}
+#toolbar-paste-btn{border-color:#71dd37 !important;color:#71dd37 !important;}
+#toolbar-delete-btn{border-color:#ff3e1d !important;color:#ff3e1d !important;}
+
+#toolbar-duplicate-btn:hover,#toolbar-duplicate-btn:focus{background:rgba(13,202,240,.08)!important;}
+#toolbar-copy-btn:hover,#toolbar-copy-btn:focus{background:rgba(105,108,255,.08)!important;}
+#toolbar-paste-btn:hover,#toolbar-paste-btn:focus{background:rgba(113,221,55,.08)!important;}
+#toolbar-delete-btn:hover,#toolbar-delete-btn:focus{background:rgba(255,62,29,.08)!important;}
+
+.board-props-col .quick-actions,
+.board-props-col .board-actions,
+.board-props-col .board-props-actions,
+.board-props-col .tips,
+.board-props-col .board-tips,
+.board-props-col [data-role="tips"]{
+  display:none !important;
+}
+
+/* board-right-column-clean-remove-v9.2.1 */
+.board-props-col .quick-actions,
+.board-props-col .board-actions,
+.board-props-col .board-props-actions,
+.board-props-col .tips,
+.board-props-col .board-tips,
+.board-props-col [data-role="tips"],
+.board-props-col [data-role="quick-actions"],
+.board-props-col [data-role="board-actions"],
+.board-props-col .quick-actions-title,
+.board-props-col .tips-title{
+  display:none !important;
+}
+
+/* terrain-orientation-v930 */
+#terrain-orientation-btn .tool-label{
+  min-width: 68px;
+}
+
+/* mobile-tablet-board-fit-v936 */
+@media (max-width: 991.98px) {
+  .board-canvas-wrap,
+  #board-canvas-wrap,
+  .tactical-board-canvas-wrap {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+}
+
+/* diagram orientation display v9.4.0 */
+.diagram-media-horizontal{
+  aspect-ratio: 16 / 9;
+  object-fit: contain !important;
+  background: #0f7c3d;
+}
+
+.diagram-media-vertical{
+  aspect-ratio: 9 / 16;
+  object-fit: contain !important;
+  background: #0f7c3d;
+  max-height: 70vh;
+  margin-inline: auto;
+}
+
+#tactic-detail-host .diagram-media-vertical,
+.gameplan-card .diagram-media-vertical{
+  width: min(100%, 420px) !important;
+  display: block;
+}
+
+/* saved orientation display v9.4.1 */
+.diagram-card-horizontal{
+  width: 100%;
+}
+
+.diagram-card-vertical{
+  width: min(100%, 520px);
+  margin-inline: auto;
+}
+
+#tactic-detail-host .diagram-card-vertical .card-body,
+#match-detail-host .diagram-card-vertical .card-body{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#tactic-detail-host .diagram-card-vertical .diagram-media-vertical,
+#match-detail-host .diagram-card-vertical .diagram-media-vertical,
+.gameplan-card .diagram-card-vertical .diagram-media-vertical,
+.card .diagram-media-vertical{
+  width: min(100%, 420px) !important;
+  aspect-ratio: 9 / 16 !important;
+  object-fit: contain !important;
+  display: block;
+  margin-inline: auto;
+  background: #0f7c3d;
+}
+
+#tactic-detail-host .diagram-card-horizontal .diagram-media-horizontal,
+#match-detail-host .diagram-card-horizontal .diagram-media-horizontal,
+.card .diagram-media-horizontal{
+  width: 100% !important;
+  aspect-ratio: 16 / 9 !important;
+  object-fit: contain !important;
+  background: #0f7c3d;
+}
+
+.match-gameplan-card .diagram-media-vertical,
+.gameplan-card .diagram-media-vertical{
+  width: min(100%, 360px) !important;
+  margin-inline: auto;
+}
+
+.match-gameplan-card .diagram-media-horizontal,
+.gameplan-card .diagram-media-horizontal{
+  width: 100% !important;
+}
+
+@media (max-width: 767.98px) {
+  .diagram-card-vertical{
+    width: 100%;
+  }
+  #tactic-detail-host .diagram-card-vertical .diagram-media-vertical,
+  #match-detail-host .diagram-card-vertical .diagram-media-vertical,
+  .gameplan-card .diagram-media-vertical{
+    width: min(100%, 320px) !important;
+  }
+}
+
+/* match-detail-vertical-video-fix-v9.4.2 */
+#match-detail-host .diagram-card-vertical,
+.match-gameplan-card.diagram-card-vertical,
+.gameplan-card.diagram-card-vertical,
+#gameplan-section .diagram-card-vertical,
+[data-section="gameplan"] .diagram-card-vertical {
+  width: min(100%, 520px) !important;
+  margin-inline: auto !important;
+}
+
+#match-detail-host .diagram-card-vertical .card-body,
+.match-gameplan-card.diagram-card-vertical .card-body,
+.gameplan-card.diagram-card-vertical .card-body,
+#gameplan-section .diagram-card-vertical .card-body,
+[data-section="gameplan"] .diagram-card-vertical .card-body {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+#match-detail-host .diagram-card-vertical video.diagram-media-vertical,
+.match-gameplan-card.diagram-card-vertical video.diagram-media-vertical,
+.gameplan-card.diagram-card-vertical video.diagram-media-vertical,
+#gameplan-section .diagram-card-vertical video.diagram-media-vertical,
+[data-section="gameplan"] .diagram-card-vertical video.diagram-media-vertical {
+  width: min(100%, 360px) !important;
+  max-width: 360px !important;
+  aspect-ratio: 9 / 16 !important;
+  object-fit: contain !important;
+  display: block !important;
+  margin-inline: auto !important;
+  background: #0f7c3d !important;
+}
+
+#match-detail-host .diagram-card-vertical .detail-timeline,
+.match-gameplan-card.diagram-card-vertical .detail-timeline,
+.gameplan-card.diagram-card-vertical .detail-timeline,
+#gameplan-section .diagram-card-vertical .detail-timeline,
+[data-section="gameplan"] .diagram-card-vertical .detail-timeline {
+  width: min(100%, 360px) !important;
+}
+
+@media (max-width: 767.98px) {
+  #match-detail-host .diagram-card-vertical,
+  .match-gameplan-card.diagram-card-vertical,
+  .gameplan-card.diagram-card-vertical,
+  #gameplan-section .diagram-card-vertical,
+  [data-section="gameplan"] .diagram-card-vertical {
+    width: 100% !important;
+  }
+
+  #match-detail-host .diagram-card-vertical video.diagram-media-vertical,
+  .match-gameplan-card.diagram-card-vertical video.diagram-media-vertical,
+  .gameplan-card.diagram-card-vertical video.diagram-media-vertical,
+  #gameplan-section .diagram-card-vertical video.diagram-media-vertical,
+  [data-section="gameplan"] .diagram-card-vertical video.diagram-media-vertical {
+    width: min(100%, 300px) !important;
+    max-width: 300px !important;
+  }
+
+  #match-detail-host .diagram-card-vertical .detail-timeline,
+  .match-gameplan-card.diagram-card-vertical .detail-timeline,
+  .gameplan-card.diagram-card-vertical .detail-timeline,
+  #gameplan-section .diagram-card-vertical .detail-timeline,
+  [data-section="gameplan"] .diagram-card-vertical .detail-timeline {
+    width: min(100%, 300px) !important;
+  }
+}
+
+/* match-detail-preview-wrap-vertical-v943 */
+.match-gameplan-item.diagram-card-vertical .match-diagram-preview-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:0.5rem;
+}
+
+.match-gameplan-item.diagram-card-vertical .match-diagram-preview{
+  width:min(100%, 320px) !important;
+  max-width:320px !important;
+  margin-inline:auto !important;
+  display:block !important;
+}
+
+.match-gameplan-item.diagram-card-horizontal .match-diagram-preview{
+  width:100% !important;
+  max-width:none !important;
+}
+
+@media (max-width: 767.98px){
+  .match-gameplan-item.diagram-card-vertical .match-diagram-preview{
+    width:min(100%, 280px) !important;
+    max-width:280px !important;
+  }
 }

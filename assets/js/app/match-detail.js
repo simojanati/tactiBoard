@@ -1,9 +1,9 @@
 
 import { activateMenu, escapeHtml, formatDate, getQueryParam, nl2br, setAppTitle, showAlert, supabase } from './common.js';
 import { canEdit, requireAuthForPage } from './auth.js';
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
 setAppTitle('Détail match');
-const tt = (k, f='') => window.t ? window.t(k, f) : f;
 activateMenu('matches');
 
 const id = getQueryParam('id');
@@ -43,8 +43,8 @@ if (!id) {
         const totals = { offense: 0, defense: 0, special_teams: 0 };
         (links || []).forEach(item => { if (Object.prototype.hasOwnProperty.call(totals, item.side || '')) totals[item.side] += 1; });
         const chips = [];
-        if (totals.offense) chips.push(`<span class="tag-chip">${tt('x.3014715369595947509','Offense')} ${totals.offense}</span>`);
-        if (totals.defense) chips.push(`<span class="tag-chip">${tt('x.4537250632815006505','Defense')} ${totals.defense}</span>`);
+        if (totals.offense) chips.push(`<span class="tag-chip">${tt('x.3014715369595947509',tt('match.offense', 'Offense'))} ${totals.offense}</span>`);
+        if (totals.defense) chips.push(`<span class="tag-chip">${tt('x.4537250632815006505',tt('match.defense', 'Defense'))} ${totals.defense}</span>`);
         if (totals.special_teams) chips.push(`<span class="tag-chip">ST ${totals.special_teams}</span>`);
         return chips.length ? chips.join('') : `<span class="text-muted">${tt('match.no_linked_tactics','Aucune tactique liée.')}</span>`;
       })()}</div></div></div></div></div>
@@ -143,9 +143,7 @@ function renderMatchGamePlan() {
             return `
               <div class="card border match-gameplan-item" data-tactic-id="${tactic.id}">
                 <div class="match-diagram-preview-wrap ${(selectedVideoUrl || selectedDiagram?.image_url) ? '' : 'd-none'}">
-                  ${selectedVideoUrl
-                    ? `<video src="${selectedVideoUrl}" class="card-img-top match-diagram-preview" style="aspect-ratio:16/9;object-fit:cover;background:#0f7c3d;" autoplay muted loop playsinline controls></video>`
-                    : `<img src="${selectedDiagram?.image_url || ''}" class="card-img-top match-diagram-preview" alt="${escapeHtml(selectedDiagram?.title || tt('tactic.diagram','Diagramme'))}">`}
+                  ${buildMatchDiagramPreviewMediaV943(selectedDiagram, selectedVideoUrl)}
                 </div>
                 <div class="card-body">
                   <div class="fw-semibold mb-1">${escapeHtml(tactic.title || tt('common.tactic','Tactique'))}</div>
@@ -176,7 +174,7 @@ function renderMatchGamePlan() {
                     <textarea class="form-control form-control-sm match-plan-item-notes" rows="2" data-tactic-id="${tactic.id}" placeholder="${tt('match.quick_instruction','Consigne rapide...')}" ${canModifyGamePlan ? '' : 'readonly'}>${escapeHtml(item.notes || '')}</textarea>
                   </div>
                   <div class="small text-muted mb-2 match-diagram-date">${formatDiagramDate(selectedDiagram)}</div>
-                  ${(canModifyGamePlan && ['admin','coach'].includes(pageCtx?.role)) ? `<a class="btn btn-sm btn-outline-dark match-board-link" href="tactical-board.html?id=${tactic.id}${selectedDiagram ? `&diagramId=${selectedDiagram.id}` : ''}">${tt('match.open_board','Ouvrir dans Board')}</a>` : ''}
+                  ${(canModifyGamePlan && ['admin','coach'].includes(pageCtx?.role)) ? `` : ''}
                 </div>
               </div>`;
           }).join('')}
@@ -258,7 +256,7 @@ function priorityLabel(value) {
 }
 
 function sideTitle(value) {
-  return value === 'offense' ? tt('x.3014715369595947509', 'Offense') : value === 'defense' ? tt('x.4537250632815006505', 'Defense') : tt('x.6425912552892308646', 'Special Teams');
+  return value === 'offense' ? tt('x.3014715369595947509', tt('match.offense', 'Offense')) : value === 'defense' ? tt('x.4537250632815006505', tt('match.defense', 'Defense')) : tt('x.6425912552892308646', tt('match.special_teams', 'Special Teams'));
 }
 
 async function exportGamePlanPdf() {
@@ -538,6 +536,19 @@ loadMatchGamePlanSection().catch(err => {
 });
 
 
+
+function buildMatchDiagramPreviewMediaV943(diagram, videoUrl) {
+  const orientation = gamePlanOrientationFromJsonV940(diagram);
+  const mediaClass = orientation === 'vertical' ? 'card-img-top match-diagram-preview diagram-media-vertical' : 'card-img-top match-diagram-preview diagram-media-horizontal';
+  const mediaStyle = orientation === 'vertical'
+    ? 'aspect-ratio:9/16;object-fit:contain;background:#0f7c3d;'
+    : 'aspect-ratio:16/9;object-fit:contain;background:#0f7c3d;';
+  if (videoUrl) {
+    return `<video src="${videoUrl}" class="${mediaClass}" style="${mediaStyle}" autoplay muted loop playsinline controls></video>`;
+  }
+  return `<img src="${diagram?.image_url || ''}" class="${mediaClass}" style="${mediaStyle}" alt="${escapeHtml(diagram?.title || tt('tactic.diagram','Diagramme'))}">`;
+}
+
 function updateGamePlanCardPreview(tacticId, diagramId) {
   const card = document.querySelector(`.match-gameplan-item[data-tactic-id="${tacticId}"]`);
   if (!card) return;
@@ -546,22 +557,18 @@ function updateGamePlanCardPreview(tacticId, diagramId) {
   const selectedDiagram = diagrams.find(d => String(d.id) === String(diagramId)) || null;
   const videoUrl = getDiagramVideoUrl(selectedDiagram);
   const dateEl = card.querySelector('.match-diagram-date');
-  const boardLink = card.querySelector('.match-board-link');
-  if (videoUrl || selectedDiagram?.image_url) {
+    if (videoUrl || selectedDiagram?.image_url) {
     previewWrap?.classList.remove('d-none');
     if (previewWrap) {
-      previewWrap.innerHTML = videoUrl
-        ? `<video src="${videoUrl}" class="card-img-top match-diagram-preview" style="aspect-ratio:16/9;object-fit:cover;background:#0f7c3d;" autoplay muted loop playsinline controls></video>`
-        : `<img src="${selectedDiagram.image_url}" class="card-img-top match-diagram-preview" alt="${selectedDiagram?.title || 'Diagramme'}">`;
+      previewWrap.innerHTML = buildMatchDiagramPreviewMediaV943(selectedDiagram, videoUrl);
     }
+    try { applySavedOrientationMediaClassesMatchV942(card); } catch (e) { console.warn(e); }
     if (dateEl) dateEl.textContent = formatDiagramDate(selectedDiagram);
-    if (boardLink) boardLink.href = `tactical-board.html?id=${tacticId}&diagramId=${selectedDiagram.id}`;
-  } else {
+      } else {
     previewWrap?.classList.add('d-none');
     if (previewWrap) previewWrap.innerHTML = '';
     if (dateEl) dateEl.textContent = tt('tactic.no_date', 'Aucune date');
-    if (boardLink) boardLink.href = `tactical-board.html?id=${tacticId}`;
-  }
+      }
 }
 
 gamePlanListHost?.addEventListener('change', event => {
@@ -651,5 +658,75 @@ function activateMatchVideoTimelines(scope = document) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  try { activateMatchVideoTimelines(); } catch (e) { console.warn(e); }
+  try { activateMatchVideoTimelines();
+  try { applySavedOrientationMediaClassesMatchV942(document); } catch (e) { console.warn(e); }
+  try { applySavedOrientationMediaClassesMatchV941(document); } catch (e) { console.warn(e); } } catch (e) { console.warn(e); }
+});
+
+
+// gamePlanOrientationFromJsonV940
+function gamePlanOrientationFromJsonV940(diagram) {
+  try {
+    const parsed = typeof diagram?.diagram_json === 'string' ? JSON.parse(diagram.diagram_json) : diagram?.diagram_json;
+    return parsed?.board?.boardOrientation || parsed?.animation?.boardOrientation || 'horizontal';
+  } catch (e) {
+    return 'horizontal';
+  }
+}
+
+
+// applySavedOrientationMediaClassesMatchV941
+function applySavedOrientationMediaClassesMatchV941(scope = document) {
+  try {
+    scope.querySelectorAll('.diagram-media-vertical').forEach((el) => {
+      const card = el.closest('.card, .gameplan-card, .match-gameplan-card');
+      if (card) card.classList.add('diagram-card-vertical');
+    });
+    scope.querySelectorAll('.diagram-media-horizontal').forEach((el) => {
+      const card = el.closest('.card, .gameplan-card, .match-gameplan-card');
+      if (card) card.classList.add('diagram-card-horizontal');
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  try { applySavedOrientationMediaClassesMatchV941(document); } catch (e) { console.warn(e); }
+});
+
+
+// applySavedOrientationMediaClassesMatchV942
+function applySavedOrientationMediaClassesMatchV942(scope = document) {
+  try {
+    const cards = scope.querySelectorAll('.card, .gameplan-card, .match-gameplan-card');
+    cards.forEach((card) => {
+      const verticalMedia = card.querySelector('.diagram-media-vertical');
+      const horizontalMedia = card.querySelector('.diagram-media-horizontal');
+      card.classList.remove('diagram-card-vertical', 'diagram-card-horizontal');
+      if (verticalMedia) {
+        card.classList.add('diagram-card-vertical');
+      } else if (horizontalMedia) {
+        card.classList.add('diagram-card-horizontal');
+      }
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  try { applySavedOrientationMediaClassesMatchV942(document); } catch (e) { console.warn(e); }
+});
+
+
+document.addEventListener('app:language-changed', () => {
+  try {
+    if (typeof loadMatchDetails === 'function') {
+      loadMatchDetails().catch(console.error);
+    } else {
+      location.reload();
+    }
+  } catch (e) {
+    console.warn(e);
+  }
 });

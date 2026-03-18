@@ -1,7 +1,8 @@
 import { activateMenu, escapeHtml, setAppTitle, showAlert, supabase } from './common.js';
 import { canAdmin, getUserContext } from './auth.js';
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
-setAppTitle('Liaison comptes');
+setAppTitle(tt('page.player_links', 'Liaison comptes'));
 activateMenu('player-links');
 
 const playerTbody = document.getElementById('entity-table');
@@ -14,8 +15,8 @@ const unlinkedCoachesBox = document.getElementById('unlinked-coaches');
 
 const ctx = await getUserContext();
 if (!canAdmin(ctx.role)) {
-  playerTbody.innerHTML = '<tr><td colspan="20" class="table-empty">Accès administrateur requis.</td></tr>';
-  throw new Error('Accès refusé');
+  playerTbody.innerHTML = `<tr><td colspan="20" class="table-empty">${tt('player_links.admin_required', 'Accès administrateur requis.')}</td></tr>`;
+  throw new Error(tt('player_links.access_denied', 'Accès refusé'));
 }
 
 let playerProfiles = [];
@@ -24,9 +25,9 @@ let players = [];
 let coaches = [];
 
 function linkedProfileLabel(profile, profileId) {
-  if (profile) return `<div class="fw-semibold">${escapeHtml(profile.full_name || profile.email || 'Compte')}</div>${profile.email ? `<small class="text-muted d-block">${escapeHtml(profile.email)}</small>` : ''}<small class="text-muted">ID: ${escapeHtml(profile.id || '')}</small>`;
+  if (profile) return `<div class="fw-semibold">${escapeHtml(profile.full_name || profile.email || tt('player_links.account', 'Compte'))}</div>${profile.email ? `<small class="text-muted d-block">${escapeHtml(profile.email)}</small>` : ''}<small class="text-muted">ID: ${escapeHtml(profile.id || '')}</small>`;
   if (profileId) return `<span class="badge bg-label-success">Lié</span><small class="text-muted d-block mt-1">ID: ${escapeHtml(profileId)}</small>`;
-  return '<span class="badge bg-label-warning">Non lié</span>';
+  return `<span class="badge bg-label-warning">${tt('player_links.unlinked', 'Non lié')}</span>`;
 }
 
 function renderListSummary(host, items, emptyMessage) {
@@ -39,14 +40,14 @@ function renderSummary() {
   const usedPlayerProfileIds = new Set(players.map(player => player.profile_id).filter(Boolean).map(String));
   const unlinkedPlayerProfiles = playerProfiles.filter(profile => !usedPlayerProfileIds.has(String(profile.id)));
   const unlinkedPlayers = players.filter(player => !player.profile_id);
-  renderListSummary(unlinkedProfilesBox, unlinkedPlayerProfiles.map(p => `<li><strong>${escapeHtml(p.full_name || p.email || 'Compte')}</strong>${p.email ? `<span class="text-muted"> — ${escapeHtml(p.email)}</span>` : ''}<span class="text-muted"> — ID: ${escapeHtml(p.id || '')}</span></li>`), 'Tous les profils joueuses sont liés.');
-  renderListSummary(unlinkedPlayersBox, unlinkedPlayers.map(p => `<li><strong>${escapeHtml(p.full_name || '')}</strong>${p.teams?.name ? `<span class="text-muted"> — ${escapeHtml(p.teams.name)}</span>` : ''}</li>`), 'Toutes les joueuses ont un compte lié.');
+  renderListSummary(unlinkedProfilesBox, unlinkedPlayerProfiles.map(p => `<li><strong>${escapeHtml(p.full_name || p.email || 'Compte')}</strong>${p.email ? `<span class="text-muted"> — ${escapeHtml(p.email)}</span>` : ''}<span class="text-muted"> — ID: ${escapeHtml(p.id || '')}</span></li>`), tt('player_links.all_player_profiles_linked', 'Tous les profils joueuses sont liés.'));
+  renderListSummary(unlinkedPlayersBox, unlinkedPlayers.map(p => `<li><strong>${escapeHtml(p.full_name || '')}</strong>${p.teams?.name ? `<span class="text-muted"> — ${escapeHtml(p.teams.name)}</span>` : ''}</li>`), tt('player_links.all_players_linked', 'Toutes les joueuses ont un compte lié.'));
 
   const usedCoachProfileIds = new Set(coaches.map(coach => coach.profile_id).filter(Boolean).map(String));
   const unlinkedCoachProfiles = coachProfiles.filter(profile => !usedCoachProfileIds.has(String(profile.id)));
   const unlinkedCoaches = coaches.filter(coach => !coach.profile_id);
-  renderListSummary(unlinkedCoachProfilesBox, unlinkedCoachProfiles.map(c => `<li><strong>${escapeHtml(c.full_name || c.email || 'Compte')}</strong>${c.email ? `<span class="text-muted"> — ${escapeHtml(c.email)}</span>` : ''}<span class="text-muted"> — ID: ${escapeHtml(c.id || '')}</span></li>`), 'Tous les profils coachs sont liés.');
-  renderListSummary(unlinkedCoachesBox, unlinkedCoaches.map(c => `<li><strong>${escapeHtml(c.full_name || '')}</strong>${c.teams?.name ? `<span class="text-muted"> — ${escapeHtml(c.teams.name)}</span>` : ''}</li>`), 'Tous les coachs ont un compte lié.');
+  renderListSummary(unlinkedCoachProfilesBox, unlinkedCoachProfiles.map(c => `<li><strong>${escapeHtml(c.full_name || c.email || 'Compte')}</strong>${c.email ? `<span class="text-muted"> — ${escapeHtml(c.email)}</span>` : ''}<span class="text-muted"> — ID: ${escapeHtml(c.id || '')}</span></li>`), tt('player_links.all_coach_profiles_linked', 'Tous les profils coachs sont liés.'));
+  renderListSummary(unlinkedCoachesBox, unlinkedCoaches.map(c => `<li><strong>${escapeHtml(c.full_name || '')}</strong>${c.teams?.name ? `<span class="text-muted"> — ${escapeHtml(c.teams.name)}</span>` : ''}</li>`), tt('player_links.all_coaches_linked', 'Tous les coachs ont un compte lié.'));
 }
 
 function profileOptions(profiles, collection, currentItemId, selectedProfileId) {
@@ -175,3 +176,8 @@ coachTbody.addEventListener('click', async e => {
 
 refreshBtn?.addEventListener('click', loadData);
 await loadData();
+
+
+document.addEventListener('app:language-changed', () => {
+  try { loadAll().catch(console.error); } catch (e) { console.warn(e); }
+});

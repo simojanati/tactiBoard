@@ -1,13 +1,14 @@
 import { activateMenu, setAppTitle, showAlert, clearAlert, supabase, escapeHtml } from './common.js';
 import { getUserContext } from './auth.js';
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
-setAppTitle('Tactical Board');
+setAppTitle(tt('page.tactical_board', 'Tactical Board'));
 activateMenu('tactical-board');
 const userCtx = await getUserContext();
 
 const fabricLib = window.fabric;
 if (!fabricLib) {
-  showAlert('Fabric.js n\'a pas pu être chargé. Vérifie ta connexion internet.', 'danger');
+  showAlert(tt('board.fabric_missing', 'Fabric.js n\'a pas pu être chargé. Vérifie ta connexion internet.'), 'danger');
   throw new Error('Fabric.js missing');
 }
 
@@ -17,9 +18,12 @@ const canvas = new fabricLib.Canvas(canvasEl, {
   selection: true,
   backgroundColor: '#0f7c3d'
 });
-const BASE_CANVAS_W = 1200;
-const BASE_CANVAS_H = 700;
-const CANVAS_ASPECT = BASE_CANVAS_W / BASE_CANVAS_H;
+let BASE_CANVAS_W = 1920;
+let BASE_CANVAS_H = 1080;
+let CANVAS_ASPECT = BASE_CANVAS_W / BASE_CANVAS_H;
+const TERRAIN_IMAGE_URLS = { horizontal: '../assets/img/terrains/terrain-horizontal.png', vertical: '../assets/img/terrains/terrain-vertical.png' };
+let BOARD_ORIENTATION = window.matchMedia('(max-width: 767.98px)').matches ? 'vertical' : 'horizontal';
+const terrainImageCache = { horizontal: null, vertical: null };
 let CANVAS_W = BASE_CANVAS_W;
 let timelinePlaying = false;
 let timelineTime = 0;
@@ -38,6 +42,160 @@ let pathTempPolyline = null;
 let CANVAS_H = BASE_CANVAS_H;
 canvas.setWidth(CANVAS_W);
 canvas.setHeight(CANVAS_H);
+
+function updateBoardDimensionsForOrientation() {
+  if (BOARD_ORIENTATION === 'vertical') {
+    BASE_CANVAS_W = 1080;
+    BASE_CANVAS_H = 1920;
+  } else {
+    BASE_CANVAS_W = 1920;
+    BASE_CANVAS_H = 1080;
+  }
+  CANVAS_ASPECT = BASE_CANVAS_W / BASE_CANVAS_H;
+}
+
+updateBoardDimensionsForOrientation();
+CANVAS_W = BASE_CANVAS_W;
+CANVAS_H = BASE_CANVAS_H;
+canvas.setWidth(CANVAS_W);
+canvas.setHeight(CANVAS_H);
+
+function preloadTerrainImage(orientation) {
+  return new Promise((resolve, reject) => {
+    const normalized = orientation === 'vertical' ? 'vertical' : 'horizontal';
+    if (terrainImageCache[normalized]) {
+      resolve(terrainImageCache[normalized]);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      terrainImageCache[normalized] = img;
+      resolve(img);
+    };
+    img.onerror = reject;
+    img.src = TERRAIN_IMAGE_URLS[normalized];
+  });
+}
+
+async function applyTerrainBackground(targetCanvas = canvas, width = CANVAS_W, height = CANVAS_H, orientation = BOARD_ORIENTATION) {
+  if (!targetCanvas) return;
+  const normalized = orientation === 'vertical' ? 'vertical' : 'horizontal';
+  targetCanvas.backgroundColor = '#0f7c3d';
+  try {
+    const raw = await preloadTerrainImage(normalized);
+    const bgImg = new fabricLib.Image(raw, {
+      originX: 'left',
+      originY: 'top',
+      left: 0,
+      top: 0,
+      selectable: false,
+      evented: false,
+      excludeFromExport: false
+    });
+    bgImg.set({
+      scaleX: width / raw.width,
+      scaleY: height / raw.height
+    });
+    targetCanvas.setBackgroundImage(bgImg, targetCanvas.renderAll.bind(targetCanvas), {
+      originX: 'left',
+      originY: 'top',
+      left: 0,
+      top: 0
+    });
+  } catch (e) {
+    console.warn('Terrain image not loaded', e);
+    targetCanvas.setBackgroundImage(null, targetCanvas.renderAll.bind(targetCanvas));
+  }
+}
+
+async function setBoardOrientation(nextOrientation, { preserveObjects = true, silent = false } = {}) {
+  const normalized = nextOrientation === 'vertical' ? 'vertical' : 'horizontal';
+  if (normalized === BOARD_ORIENTATION && !silent) {
+    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
+    updateTerrainOrientationButton();
+    return;
+  }
+  if (normalized === BOARD_ORIENTATION && silent) {
+    updateBoardDimensionsForOrientation();
+    const size = computeResponsiveCanvasSize();
+    CANVAS_W = size.width;
+    CANVAS_H = size.height;
+    canvas.setWidth(CANVAS_W);
+    canvas.setHeight(CANVAS_H);
+    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
+    resetViewport();
+    updateTerrainOrientationButton();
+    return;
+  }
+  const previousW = CANVAS_W;
+  const previousH = CANVAS_H;
+  const previousOrientation = BOARD_ORIENTATION;
+  const userJson = preserveObjects ? getUserObjectsJson() : null;
+  const previousPlayerPaths = Array.isArray(playerPaths) ? JSON.parse(JSON.stringify(playerPaths)) : [];
+  BOARD_ORIENTATION = normalized;
+  updateBoardDimensionsForOrientation();
+  const size = computeResponsiveCanvasSize();
+  CANVAS_W = size.width;
+  CANVAS_H = size.height;
+  canvas.setWidth(CANVAS_W);
+  canvas.setHeight(CANVAS_H);
+  if (preserveObjects && userJson?.objects?.length) {
+    userJson.boardWidth = previousW;
+    userJson.boardHeight = previousH;
+    userJson.boardOrientation = previousOrientation;
+    const originalObjectsBeforeOrientation = Array.isArray(userJson.objects) ? JSON.parse(JSON.stringify(userJson.objects)) : [];
+    const rotated = transformObjectsForOrientation(userJson, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, normalized);
+    const scaled = scaleDiagramJsonToCurrent(rotated);
+    await restoreBoardState(scaled);
+    try {
+      postProcessObjectsAfterOrientationV935(originalObjectsBeforeOrientation, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, normalized);
+    } catch (e) {
+      console.warn(e);
+    }
+
+    if (previousPlayerPaths.length) {
+      const mapPathPoint = (x, y) => {
+        const px = Number(x || 0) / Math.max(1, previousW);
+        const py = Number(y || 0) / Math.max(1, previousH);
+        if (previousOrientation === 'horizontal' && normalized === 'vertical') {
+          return { x: py * CANVAS_W, y: (1 - px) * CANVAS_H };
+        }
+        if (previousOrientation === 'vertical' && normalized === 'horizontal') {
+          return { x: (1 - py) * CANVAS_W, y: px * CANVAS_H };
+        }
+        return { x: px * CANVAS_W, y: py * CANVAS_H };
+      };
+      playerPaths = previousPlayerPaths.map((path) => ({
+        ...path,
+        points: Array.isArray(path.points) ? path.points.map((pt) => {
+          const mapped = mapPathPoint(pt.x, pt.y);
+          return { ...pt, x: mapped.x, y: mapped.y };
+        }) : []
+      }));
+    }
+  } else {
+    canvas.clear();
+    await renderFieldBackground();
+    resetViewport();
+  }
+  updateTerrainOrientationButton();
+}
+
+function toggleBoardOrientation() {
+  const next = BOARD_ORIENTATION === 'horizontal' ? 'vertical' : 'horizontal';
+  setBoardOrientation(next, { preserveObjects: true }).catch(console.error);
+}
+
+function updateTerrainOrientationButton() {
+  const btn = document.getElementById('terrain-orientation-btn');
+  if (!btn) return;
+  const label = btn.querySelector('.tool-label');
+  const shortLabel = BOARD_ORIENTATION === 'horizontal' ? 'Horizontal' : 'Vertical';
+  btn.setAttribute('title', BOARD_ORIENTATION === 'horizontal' ? tt('board.field.switch_vertical','Passer en terrain vertical') : tt('board.field.switch_horizontal','Passer en terrain horizontal'));
+  btn.setAttribute('aria-label', shortLabel);
+  btn.dataset.shortLabel = shortLabel;
+  if (label) label.textContent = shortLabel;
+}
 
 const tacticSelect = document.getElementById('tactic-select');
 const saveBtn = document.getElementById('save-btn');
@@ -144,9 +302,6 @@ let animationCachedHash = '';
 let animationCachedWebMBlob = null;
 let animationCachedObjectUrl = '';
 let animationCachedDownloadName = '';
-
-
-
 
 function isCoachOrAdmin() {
   return ['admin', 'coach'].includes(userCtx?.role);
@@ -267,8 +422,6 @@ function extractSavedAnimationMeta(diagramJson) {
   }
 }
 
-
-
 function revokeCachedAnimationObjectUrl() {
   if (animationCachedObjectUrl) {
     try { URL.revokeObjectURL(animationCachedObjectUrl); } catch (_) {}
@@ -304,7 +457,7 @@ function buildWebMDownloadName() {
 
 function triggerBrowserDownload(url, filename) {
   const a = document.createElement('a');
-  a.href = url;
+  if (a) a.href = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
@@ -349,6 +502,10 @@ function getStoredDiagramPayload() {
   return {
     schema: 'tactiboard.diagram.v2',
     board,
+    media: {
+      boardOrientation: BOARD_ORIENTATION,
+      previewAspectRatio: BOARD_ORIENTATION === 'vertical' ? '9/16' : '16/9'
+    },
     animation: hasAnimation ? {
       version: 1,
       baseState: typeof animationBaseState === 'string' ? JSON.parse(animationBaseState) : animationBaseState,
@@ -362,6 +519,7 @@ function getStoredDiagramPayload() {
           time: Number(pt?.time || 0)
         })) : []
       })) : [],
+      boardOrientation: BOARD_ORIENTATION,
       savedAt: new Date().toISOString()
     } : null
   };
@@ -539,7 +697,7 @@ function updateAnimationControls() {
     animationHelpText.textContent = animationRecording
       ? 'Déplace les objets du board (joueuses, ballon, flèches, zones, lignes, textes). Les positions sont enregistrées automatiquement.'
       : (hasTimeline
-        ? 'Utilise Preview pour relire l’animation ou Exporter WebM pour générer une vidéo partageable.'
+        ? ''
         : "Astuce: clique sur Start, bouge les objets du board sur le terrain, puis termine pour générer l'animation. Shift + tracé sur une flèche courbe = inversion du côté.");
   }
 }
@@ -722,7 +880,6 @@ function stopAnimationRecording() {
   if (animationKeyframes.length < 2 || animationDurationMs <= 0) {
     showAlert('Animation trop courte. Fais au moins un déplacement avant de terminer.', 'warning');
   } else {
-    showAlert('Animation enregistrée. Tu peux maintenant lancer Preview ou Exporter WebM.', 'success');
   }
   updateAnimationControls();
 }
@@ -777,9 +934,11 @@ async function createRenderCanvasFromBaseState() {
   renderCanvas.setWidth(CANVAS_W);
   renderCanvas.setHeight(CANVAS_H);
   const parsed = typeof animationBaseState === 'string' ? JSON.parse(animationBaseState) : animationBaseState;
-  const scaled = scaleDiagramJsonToCurrent(parsed?.board ? parsed.board : parsed);
+  const sourceBoard = parsed?.board ? parsed.board : parsed;
+  const sourceOrientation = sourceBoard?.boardOrientation || BOARD_ORIENTATION;
+  const scaled = scaleDiagramJsonToCurrent(sourceBoard);
   await new Promise(resolve => renderCanvas.loadFromJSON(scaled, resolve));
-  drawFieldBackgroundOnCanvas(renderCanvas, CANVAS_W, CANVAS_H);
+  await drawFieldBackgroundOnCanvas(renderCanvas, CANVAS_W, CANVAS_H, sourceOrientation);
   renderCanvas.renderAll();
   return renderCanvas;
 }
@@ -876,17 +1035,19 @@ function getWrapMetrics() {
 }
 
 function computeResponsiveCanvasSize() {
-  if (isMobileBoardMode()) {
-    return { width: BASE_CANVAS_W, height: BASE_CANVAS_H };
-  }
   const viewport = getWrapMetrics();
-  let width = viewport.width;
-  let height = width / CANVAS_ASPECT;
-  const maxHeight = Math.max(260, viewport.height);
-  if (height > maxHeight) {
-    height = maxHeight;
+  let width = Math.max(320, Math.round(viewport.width || BASE_CANVAS_W));
+  let height = width / Math.max(0.0001, CANVAS_ASPECT);
+
+  const hardMaxHeight = window.matchMedia('(max-width: 991.98px)').matches
+    ? Math.max(360, Math.round(window.innerHeight * 0.72))
+    : Math.max(260, viewport.height || Math.round(window.innerHeight * 0.72));
+
+  if (height > hardMaxHeight) {
+    height = hardMaxHeight;
     width = height * CANVAS_ASPECT;
   }
+
   width = Math.max(320, Math.round(width));
   height = Math.max(220, Math.round(height));
   return { width, height };
@@ -913,6 +1074,72 @@ function scaleSerializedNode(node, sx, sy) {
   return node;
 }
 
+function transformObjectsForOrientation(json, prevW, prevH, newW, newH, fromOrientation = 'horizontal', toOrientation = 'vertical') {
+  if (!json || !Array.isArray(json.objects) || fromOrientation === toOrientation) return json;
+  const cloned = JSON.parse(JSON.stringify(json));
+
+  const mapPoint = (x, y) => {
+    const px = Number(x || 0) / Math.max(1, prevW);
+    const py = Number(y || 0) / Math.max(1, prevH);
+
+    if (fromOrientation === 'horizontal' && toOrientation === 'vertical') {
+      return { x: py * newW, y: (1 - px) * newH };
+    }
+    if (fromOrientation === 'vertical' && toOrientation === 'horizontal') {
+      return { x: (1 - py) * newW, y: px * newH };
+    }
+    return { x: px * newW, y: py * newH };
+  };
+
+  const angleDelta = fromOrientation === 'horizontal' && toOrientation === 'vertical' ? 90
+    : fromOrientation === 'vertical' && toOrientation === 'horizontal' ? -90
+    : 0;
+
+  cloned.objects = cloned.objects.map((obj) => {
+    const o = { ...obj };
+
+    if (typeof o.left === 'number' && typeof o.top === 'number') {
+      const pt = mapPoint(o.left, o.top);
+      o.left = pt.x;
+      o.top = pt.y;
+    }
+
+    if (typeof o.angle === 'number') {
+      o.angle = (o.angle + angleDelta + 360) % 360;
+    }
+
+    if (Array.isArray(o.points)) {
+      o.points = o.points.map((pt) => {
+        const mapped = mapPoint(pt.x, pt.y);
+        return { ...pt, x: mapped.x, y: mapped.y };
+      });
+    }
+
+    if (typeof o.x1 === 'number' && typeof o.y1 === 'number') {
+      const pt1 = mapPoint(o.x1, o.y1);
+      o.x1 = pt1.x;
+      o.y1 = pt1.y;
+    }
+    if (typeof o.x2 === 'number' && typeof o.y2 === 'number') {
+      const pt2 = mapPoint(o.x2, o.y2);
+      o.x2 = pt2.x;
+      o.y2 = pt2.y;
+    }
+
+    if (typeof o.pathOffset?.x === 'number' && typeof o.pathOffset?.y === 'number') {
+      const po = mapPoint(o.pathOffset.x, o.pathOffset.y);
+      o.pathOffset = { ...o.pathOffset, x: po.x, y: po.y };
+    }
+
+    return o;
+  });
+
+  cloned.boardWidth = newW;
+  cloned.boardHeight = newH;
+  cloned.boardOrientation = toOrientation;
+  return cloned;
+}
+
 function scaleDiagramJsonToCurrent(parsed) {
   const sourceW = Number(parsed?.boardWidth || parsed?.canvasWidth || BASE_CANVAS_W) || BASE_CANVAS_W;
   const sourceH = Number(parsed?.boardHeight || parsed?.canvasHeight || BASE_CANVAS_H) || BASE_CANVAS_H;
@@ -935,6 +1162,161 @@ function resizeBoardCanvas({ preserveObjects = true } = {}) {
   CANVAS_H = size.height;
   canvas.setWidth(CANVAS_W);
   canvas.setHeight(CANVAS_H);
+
+function updateBoardDimensionsForOrientation() {
+  if (BOARD_ORIENTATION === 'vertical') {
+    BASE_CANVAS_W = 1080;
+    BASE_CANVAS_H = 1920;
+  } else {
+    BASE_CANVAS_W = 1920;
+    BASE_CANVAS_H = 1080;
+  }
+  CANVAS_ASPECT = BASE_CANVAS_W / BASE_CANVAS_H;
+}
+
+updateBoardDimensionsForOrientation();
+CANVAS_W = BASE_CANVAS_W;
+CANVAS_H = BASE_CANVAS_H;
+canvas.setWidth(CANVAS_W);
+canvas.setHeight(CANVAS_H);
+
+function preloadTerrainImage(orientation) {
+  return new Promise((resolve, reject) => {
+    const normalized = orientation === 'vertical' ? 'vertical' : 'horizontal';
+    if (terrainImageCache[normalized]) {
+      resolve(terrainImageCache[normalized]);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      terrainImageCache[normalized] = img;
+      resolve(img);
+    };
+    img.onerror = reject;
+    img.src = TERRAIN_IMAGE_URLS[normalized];
+  });
+}
+
+async function applyTerrainBackground(targetCanvas = canvas, width = CANVAS_W, height = CANVAS_H, orientation = BOARD_ORIENTATION) {
+  if (!targetCanvas) return;
+  const normalized = orientation === 'vertical' ? 'vertical' : 'horizontal';
+  targetCanvas.backgroundColor = '#0f7c3d';
+  try {
+    const raw = await preloadTerrainImage(normalized);
+    const bgImg = new fabricLib.Image(raw, {
+      originX: 'left',
+      originY: 'top',
+      left: 0,
+      top: 0,
+      selectable: false,
+      evented: false,
+      excludeFromExport: false
+    });
+    bgImg.set({
+      scaleX: width / raw.width,
+      scaleY: height / raw.height
+    });
+    targetCanvas.setBackgroundImage(bgImg, targetCanvas.renderAll.bind(targetCanvas), {
+      originX: 'left',
+      originY: 'top',
+      left: 0,
+      top: 0
+    });
+  } catch (e) {
+    console.warn('Terrain image not loaded', e);
+    targetCanvas.setBackgroundImage(null, targetCanvas.renderAll.bind(targetCanvas));
+  }
+}
+
+async function setBoardOrientation(nextOrientation, { preserveObjects = true, silent = false } = {}) {
+  const normalized = nextOrientation === 'vertical' ? 'vertical' : 'horizontal';
+  if (normalized === BOARD_ORIENTATION && !silent) {
+    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
+    updateTerrainOrientationButton();
+    return;
+  }
+  if (normalized === BOARD_ORIENTATION && silent) {
+    updateBoardDimensionsForOrientation();
+    const size = computeResponsiveCanvasSize();
+    CANVAS_W = size.width;
+    CANVAS_H = size.height;
+    canvas.setWidth(CANVAS_W);
+    canvas.setHeight(CANVAS_H);
+    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
+    resetViewport();
+    updateTerrainOrientationButton();
+    return;
+  }
+  const previousW = CANVAS_W;
+  const previousH = CANVAS_H;
+  const previousOrientation = BOARD_ORIENTATION;
+  const userJson = preserveObjects ? getUserObjectsJson() : null;
+  const previousPlayerPaths = Array.isArray(playerPaths) ? JSON.parse(JSON.stringify(playerPaths)) : [];
+  BOARD_ORIENTATION = normalized;
+  updateBoardDimensionsForOrientation();
+  const size = computeResponsiveCanvasSize();
+  CANVAS_W = size.width;
+  CANVAS_H = size.height;
+  canvas.setWidth(CANVAS_W);
+  canvas.setHeight(CANVAS_H);
+  if (preserveObjects && userJson?.objects?.length) {
+    userJson.boardWidth = previousW;
+    userJson.boardHeight = previousH;
+    userJson.boardOrientation = previousOrientation;
+    const originalObjectsBeforeOrientation = Array.isArray(userJson.objects) ? JSON.parse(JSON.stringify(userJson.objects)) : [];
+    const rotated = transformObjectsForOrientation(userJson, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, normalized);
+    const scaled = scaleDiagramJsonToCurrent(rotated);
+    await restoreBoardState(scaled);
+    try {
+      postProcessObjectsAfterOrientationV935(originalObjectsBeforeOrientation, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, normalized);
+    } catch (e) {
+      console.warn(e);
+    }
+
+    if (previousPlayerPaths.length) {
+      const mapPathPoint = (x, y) => {
+        const px = Number(x || 0) / Math.max(1, previousW);
+        const py = Number(y || 0) / Math.max(1, previousH);
+        if (previousOrientation === 'horizontal' && normalized === 'vertical') {
+          return { x: py * CANVAS_W, y: (1 - px) * CANVAS_H };
+        }
+        if (previousOrientation === 'vertical' && normalized === 'horizontal') {
+          return { x: (1 - py) * CANVAS_W, y: px * CANVAS_H };
+        }
+        return { x: px * CANVAS_W, y: py * CANVAS_H };
+      };
+      playerPaths = previousPlayerPaths.map((path) => ({
+        ...path,
+        points: Array.isArray(path.points) ? path.points.map((pt) => {
+          const mapped = mapPathPoint(pt.x, pt.y);
+          return { ...pt, x: mapped.x, y: mapped.y };
+        }) : []
+      }));
+    }
+  } else {
+    canvas.clear();
+    await renderFieldBackground();
+    resetViewport();
+  }
+  updateTerrainOrientationButton();
+}
+
+function toggleBoardOrientation() {
+  const next = BOARD_ORIENTATION === 'horizontal' ? 'vertical' : 'horizontal';
+  setBoardOrientation(next, { preserveObjects: true }).catch(console.error);
+}
+
+function updateTerrainOrientationButton() {
+  const btn = document.getElementById('terrain-orientation-btn');
+  if (!btn) return;
+  const label = btn.querySelector('.tool-label');
+  const shortLabel = BOARD_ORIENTATION === 'horizontal' ? 'Horizontal' : 'Vertical';
+  btn.setAttribute('title', BOARD_ORIENTATION === 'horizontal' ? tt('board.field.switch_vertical','Passer en terrain vertical') : tt('board.field.switch_horizontal','Passer en terrain horizontal'));
+  btn.setAttribute('aria-label', shortLabel);
+  btn.dataset.shortLabel = shortLabel;
+  if (label) label.textContent = shortLabel;
+}
+
   if (preserveObjects && userJson?.objects?.length) {
     const sx = CANVAS_W / previousW;
     const sy = CANVAS_H / previousH;
@@ -944,8 +1326,7 @@ function resizeBoardCanvas({ preserveObjects = true } = {}) {
     restoreBoardState(scaled).catch(console.error);
     return;
   }
-  renderFieldBackground();
-  resetViewport();
+  renderFieldBackground().then(() => resetViewport());
 }
 
 function getCanvasViewportSize() {
@@ -991,7 +1372,6 @@ function centerBoardScroll(force = false) {
   requestAnimationFrame(alignBoard);
 }
 
-
 function setZoomBadge() {
   const boardValue = `${Math.round(canvas.getZoom() * 100)}%`;
   if (zoomBadge) zoomBadge.textContent = boardValue;
@@ -1025,14 +1405,13 @@ function pushHistoryState() {
 async function restoreBoardState(state) {
   isRestoringHistory = true;
   canvas.clear();
-  renderFieldBackground();
+  await renderFieldBackground();
   resetViewport();
   if (state) {
     const parsed = typeof state === 'string' ? JSON.parse(state) : state;
     await new Promise(resolve => canvas.loadFromJSON(parsed, resolve));
   }
-  renderFieldBackground();
-  canvas.getObjects().filter(o => o.isFieldBg).forEach((o, idx) => canvas.moveTo(o, idx));
+  await renderFieldBackground();
   canvas.discardActiveObject();
   ensureAnimIdsOnCanvas();
   canvas.renderAll();
@@ -1084,21 +1463,25 @@ function zoomStep(delta) {
 function setTool(tool) {
   if (currentTool === 'path' && tool !== 'path') finishPlayerPath();
   currentTool = tool;
-  toolButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tool === tool));
+  toolButtons.forEach(btn => {
+    if (btn.classList.contains('board-toolbar-action') || btn.dataset.noToolActive === '1') {
+      btn.classList.remove('active');
+      return;
+    }
+    btn.classList.toggle('active', btn.dataset.tool === tool);
+  });
   canvas.isDrawingMode = false;
   canvas.selection = tool === 'select';
   if (tool === 'pan') canvas.defaultCursor = 'grab';
   else canvas.defaultCursor = tool === 'select' ? 'default' : 'crosshair';
 }
 
-
-
 if (boardToolbar) boardToolbar.classList.remove('collapsed');
 if (boardToolbarCol) boardToolbarCol.classList.add('is-expanded');
 if (toolbarToggleBtn) toolbarToggleBtn.classList.add('d-none');
 
 if (toolbarToggleBtn && boardToolbar) {
-  toolbarToggleBtn.addEventListener('click', () => {
+  toolbarToggleBtn?.addEventListener('click', () => {
     boardToolbar.classList.toggle('collapsed');
     boardToolbarCol?.classList.toggle('is-expanded', !boardToolbar.classList.contains('collapsed'));
     const icon = toolbarToggleBtn.querySelector('i');
@@ -1108,7 +1491,6 @@ if (toolbarToggleBtn && boardToolbar) {
     centerBoardScroll(true);
   });
 }
-
 
 canvas.on('mouse:wheel', function(opt) {
   if (presentationMode) return;
@@ -1123,19 +1505,18 @@ canvas.on('mouse:wheel', function(opt) {
   setZoomBadge();
 });
 
-window.addEventListener('keydown', (e) => {
+window?.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     spacePressed = true;
     if (currentTool !== 'pan') canvas.defaultCursor = 'grab';
   }
 });
-window.addEventListener('keyup', (e) => {
+window?.addEventListener('keyup', (e) => {
   if (e.code === 'Space') {
     spacePressed = false;
     if (currentTool !== 'pan') canvas.defaultCursor = currentTool === 'select' ? 'default' : 'crosshair';
   }
 });
-
 
 function capturePresentationSnapshot() {
   if (!presentationImage) return;
@@ -1227,72 +1608,16 @@ function fieldBg(obj) {
   return obj;
 }
 
-
-function drawFieldBackgroundOnCanvas(targetCanvas, width, height) {
+async function drawFieldBackgroundOnCanvas(targetCanvas, width, height, orientation = BOARD_ORIENTATION) {
   if (!targetCanvas) return;
-  const existing = targetCanvas.getObjects().filter(obj => obj.isFieldBg);
-  existing.forEach(obj => targetCanvas.remove(obj));
-  const bg = fieldBg(new fabricLib.Rect({ left: 0, top: 0, width, height, fill: '#0f7c3d' }));
-  targetCanvas.add(bg);
-  const endZoneW = width * 0.1;
-  targetCanvas.add(fieldBg(new fabricLib.Line([width / 2, 0, width / 2, height], { stroke: '#ffffff', strokeWidth: 4 * (width / BASE_CANVAS_W), opacity: .85 })));
-  targetCanvas.add(fieldBg(new fabricLib.Rect({ left: 0, top: 0, width: endZoneW, height, fill: 'rgba(255,255,255,0.06)', stroke: '#fff', strokeWidth: 2 * (width / BASE_CANVAS_W) })));
-  targetCanvas.add(fieldBg(new fabricLib.Rect({ left: width - endZoneW, top: 0, width: endZoneW, height, fill: 'rgba(255,255,255,0.06)', stroke: '#fff', strokeWidth: 2 * (width / BASE_CANVAS_W) })));
-  for (let i = 1; i < 10; i++) {
-    const x = endZoneW + (((width - endZoneW * 2) / 10) * i);
-    targetCanvas.add(fieldBg(new fabricLib.Line([x, 0, x, height], { stroke: '#ffffff', strokeWidth: i === 5 ? 3 * (width / BASE_CANVAS_W) : 2 * (width / BASE_CANVAS_W), opacity: .7 })));
-    for (let h = 0; h < 8; h++) {
-      const yTop = (90 * (height / BASE_CANVAS_H)) + h * (65 * (height / BASE_CANVAS_H));
-      const yBottom = height - (90 * (height / BASE_CANVAS_H)) - h * (65 * (height / BASE_CANVAS_H));
-      targetCanvas.add(fieldBg(new fabricLib.Line([x - 14 * (width / BASE_CANVAS_W), yTop, x + 14 * (width / BASE_CANVAS_W), yTop], { stroke: '#fff', strokeWidth: 2 * (width / BASE_CANVAS_W), opacity: .55 })));
-      targetCanvas.add(fieldBg(new fabricLib.Line([x - 14 * (width / BASE_CANVAS_W), yBottom, x + 14 * (width / BASE_CANVAS_W), yBottom], { stroke: '#fff', strokeWidth: 2 * (width / BASE_CANVAS_W), opacity: .55 })));
-    }
-  }
-  for (let i = 1; i < 10; i++) {
-    const yard = i * 10;
-    const xLeft = endZoneW + (((width - endZoneW * 2) / 10) * i) - 24 * (width / BASE_CANVAS_W);
-    const xRight = width - xLeft - 24 * (width / BASE_CANVAS_W);
-    targetCanvas.add(fieldBg(new fabricLib.Text(String(yard <= 50 ? yard : 100 - yard), { left: xLeft, top: 20 * (height / BASE_CANVAS_H), fontSize: 24 * Math.min(width / BASE_CANVAS_W, height / BASE_CANVAS_H), fill: 'rgba(255,255,255,0.45)', fontWeight: 700 })));
-    targetCanvas.add(fieldBg(new fabricLib.Text(String(yard <= 50 ? yard : 100 - yard), { left: xRight, top: height - 44 * (height / BASE_CANVAS_H), fontSize: 24 * Math.min(width / BASE_CANVAS_W, height / BASE_CANVAS_H), fill: 'rgba(255,255,255,0.45)', fontWeight: 700, angle: 180 })));
-  }
-  targetCanvas.getObjects().filter(obj => obj.isFieldBg).forEach((obj, idx) => targetCanvas.moveTo(obj, idx));
+  targetCanvas.getObjects().filter(obj => obj.isFieldBg).forEach(obj => targetCanvas.remove(obj));
+  await applyTerrainBackground(targetCanvas, width, height, orientation);
   targetCanvas.renderAll();
 }
 
-function renderFieldBackground() {
-  const existing = canvas.getObjects().filter(obj => obj.isFieldBg);
-  existing.forEach(obj => canvas.remove(obj));
-
-  const bg = fieldBg(new fabricLib.Rect({ left: 0, top: 0, width: CANVAS_W, height: CANVAS_H, fill: '#0f7c3d' }));
-  canvas.add(bg);
-
-  const endZoneW = 120;
-  const centerLine = fieldBg(new fabricLib.Line([CANVAS_W / 2, 0, CANVAS_W / 2, CANVAS_H], { stroke: '#ffffff', strokeWidth: 4, opacity: .85 }));
-  canvas.add(centerLine);
-  canvas.add(fieldBg(new fabricLib.Rect({ left: 0, top: 0, width: endZoneW, height: CANVAS_H, fill: 'rgba(255,255,255,0.06)', stroke: '#fff', strokeWidth: 2 })));
-  canvas.add(fieldBg(new fabricLib.Rect({ left: CANVAS_W - endZoneW, top: 0, width: endZoneW, height: CANVAS_H, fill: 'rgba(255,255,255,0.06)', stroke: '#fff', strokeWidth: 2 })));
-
-  for (let i = 1; i < 10; i++) {
-    const x = endZoneW + (((CANVAS_W - endZoneW * 2) / 10) * i);
-    canvas.add(fieldBg(new fabricLib.Line([x, 0, x, CANVAS_H], { stroke: '#ffffff', strokeWidth: i === 5 ? 3 : 2, opacity: .7 })));
-    for (let h = 0; h < 8; h++) {
-      const yTop = 90 + h * 65;
-      const yBottom = CANVAS_H - 90 - h * 65;
-      canvas.add(fieldBg(new fabricLib.Line([x - 14, yTop, x + 14, yTop], { stroke: '#fff', strokeWidth: 2, opacity: .55 })));
-      canvas.add(fieldBg(new fabricLib.Line([x - 14, yBottom, x + 14, yBottom], { stroke: '#fff', strokeWidth: 2, opacity: .55 })));
-    }
-  }
-
-  for (let i = 1; i < 10; i++) {
-    const yard = i * 10;
-    const xLeft = endZoneW + (((CANVAS_W - endZoneW * 2) / 10) * i) - 24;
-    const xRight = CANVAS_W - xLeft - 24;
-    const topText = fieldBg(new fabricLib.Text(String(yard <= 50 ? yard : 100 - yard), { left: xLeft, top: 20, fontSize: 24, fill: 'rgba(255,255,255,0.45)', fontWeight: 700, angle: 0 }));
-    const bottomText = fieldBg(new fabricLib.Text(String(yard <= 50 ? yard : 100 - yard), { left: xRight, top: CANVAS_H - 44, fontSize: 24, fill: 'rgba(255,255,255,0.45)', fontWeight: 700, angle: 180 }));
-    canvas.add(topText, bottomText);
-  }
-
-  canvas.getObjects().filter(obj => obj.isFieldBg).forEach((obj, idx) => canvas.moveTo(obj, idx));
+async function renderFieldBackground() {
+  canvas.getObjects().filter(obj => obj.isFieldBg).forEach(obj => canvas.remove(obj));
+  await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
   canvas.renderAll();
 }
 
@@ -1301,6 +1626,7 @@ function getUserObjectsJson() {
     version: fabricLib.version,
     boardWidth: CANVAS_W,
     boardHeight: CANVAS_H,
+    boardOrientation: BOARD_ORIENTATION,
     objects: canvas.getObjects().filter(obj => !obj.isFieldBg).map(obj => { ensureAnimId(obj); return obj.toObject(['pbType', 'labelText', 'animId', 'pbArrowKind', 'pbColor', 'pbStrokeWidth', 'pbCoords', 'pbCurveSide']); })
   };
 }
@@ -1332,7 +1658,60 @@ function normalizeColor(color) {
   return '#' + [m[1], m[2], m[3]].map(v => Number(v).toString(16).padStart(2, '0')).join('');
 }
 
-function addMarker(type, x, y) {
+// orientationAwareTemplatePositionsV941
+function getTemplateMarkerPositionsV941(type = 'offense') {
+  const isVertical = BOARD_ORIENTATION === 'vertical';
+  if (isVertical) {
+    if (type === 'offense') {
+      return [
+        { x: CANVAS_W * 0.50, y: CANVAS_H * 0.72, label: 'QB' },
+        { x: CANVAS_W * 0.36, y: CANVAS_H * 0.76, label: 'L' },
+        { x: CANVAS_W * 0.64, y: CANVAS_H * 0.76, label: 'R' },
+        { x: CANVAS_W * 0.50, y: CANVAS_H * 0.80, label: 'K' },
+        { x: CANVAS_W * 0.50, y: CANVAS_H * 0.86, label: 'B' }
+      ];
+    }
+    if (type === 'defense') {
+      return [
+        { x: CANVAS_W * 0.34, y: CANVAS_H * 0.60, label: 'X' },
+        { x: CANVAS_W * 0.66, y: CANVAS_H * 0.60, label: 'X' },
+        { x: CANVAS_W * 0.34, y: CANVAS_H * 0.50, label: 'G' },
+        { x: CANVAS_W * 0.66, y: CANVAS_H * 0.50, label: 'G' }
+      ];
+    }
+    return [
+      { x: CANVAS_W * 0.50, y: CANVAS_H * 0.22, label: 'K' },
+      { x: CANVAS_W * 0.50, y: CANVAS_H * 0.30, label: 'P' },
+      { x: CANVAS_W * 0.36, y: CANVAS_H * 0.38, label: 'L' },
+      { x: CANVAS_W * 0.64, y: CANVAS_H * 0.38, label: 'R' }
+    ];
+  }
+
+  if (type === 'offense') {
+    return [
+      { x: CANVAS_W * 0.25, y: CANVAS_H * 0.50, label: 'QB' },
+      { x: CANVAS_W * 0.18, y: CANVAS_H * 0.40, label: 'L' },
+      { x: CANVAS_W * 0.18, y: CANVAS_H * 0.60, label: 'R' },
+      { x: CANVAS_W * 0.25, y: CANVAS_H * 0.60, label: 'TE' },
+      { x: CANVAS_W * 0.14, y: CANVAS_H * 0.50, label: 'B' }
+    ];
+  }
+  if (type === 'defense') {
+    return [
+      { x: CANVAS_W * 0.50, y: CANVAS_H * 0.35, label: 'X' },
+      { x: CANVAS_W * 0.50, y: CANVAS_H * 0.65, label: 'X' },
+      { x: CANVAS_W * 0.46, y: CANVAS_H * 0.50, label: 'G' },
+      { x: CANVAS_W * 0.62, y: CANVAS_H * 0.50, label: 'G' }
+    ];
+  }
+  return [
+    { x: CANVAS_W * 0.32, y: CANVAS_H * 0.50, label: 'K' },
+    { x: CANVAS_W * 0.20, y: CANVAS_H * 0.50, label: 'B' },
+    { x: CANVAS_W * 0.12, y: CANVAS_H * 0.42, label: 'L' },
+    { x: CANVAS_W * 0.12, y: CANVAS_H * 0.58, label: 'R' }
+  ];
+}
+function addMarker(type, x, y, labelOverride = null) {
   const fill = type === 'offense' ? '#696cff' : type === 'defense' ? '#ff3e1d' : '#8b5e3c';
   const radius = type === 'ball' ? 18 : 24;
   const label = type === 'offense' ? 'O' : type === 'defense' ? 'X' : 'B';
@@ -1417,7 +1796,7 @@ function buildCurvedArrow(x1, y1, x2, y2, color = '#ff5f6d', width = 4, curveSid
 }
 
 function buildToolShape(tool, x1, y1, x2, y2, meta = {}) {
-  if (tool === 'line') return new fabricLib.Line([x1, y1, x2, y2], { stroke: '#ffffff', strokeWidth: 4, pbType: 'line' });
+  if (tool === 'line') return new fabricLib.Line([x1, y1, x2, y2], { stroke: '#ffffff', strokeWidth: 4, pbType: 'line', pbCoords: { x1, y1, x2, y2 } });
   if (tool === 'zone') return new fabricLib.Rect({ left: Math.min(x1, x2), top: Math.min(y1, y2), width: Math.abs(x2 - x1), height: Math.abs(y2 - y1), fill: 'rgba(255,0,0,0.22)', stroke: '#ff4d4f', strokeWidth: 3, rx: 10, ry: 10, pbType: 'zone' });
   if (tool === 'arrow') return buildArrow(x1, y1, x2, y2);
   if (tool === 'pass-arrow') return buildPassArrow(x1, y1, x2, y2);
@@ -1427,7 +1806,7 @@ function buildToolShape(tool, x1, y1, x2, y2, meta = {}) {
 
 function refreshTempShape(tool, shape, x1, y1, x2, y2, meta = {}) {
   if (tool === 'line') {
-    shape.set({ x1, y1, x2, y2 });
+    shape.set({ x1, y1, x2, y2, pbCoords: { x1, y1, x2, y2 } });
   } else if (tool === 'zone') {
     shape.set({ left: Math.min(x1, x2), top: Math.min(y1, y2), width: Math.abs(x2 - x1), height: Math.abs(y2 - y1) });
   } else if (['arrow', 'pass-arrow', 'curved-arrow'].includes(tool)) {
@@ -1462,7 +1841,7 @@ canvas.on('mouse:down', opt => {
     const activeObj = canvas.getActiveObject();
     if (!pathDrawing) {
       if (!isPlayerMarkerObject(activeObj)) {
-        showAlert('Choisissez d\'abord une joueuse pour tracer un path.', 'warning');
+        showAlert(tt('board.warning.select_player_path', 'Choisissez d\'abord une joueuse pour tracer un path.'), 'warning');
         return;
       }
       pathDrawing = true;
@@ -1555,7 +1934,7 @@ canvas.on('object:removed', (e) => {
   }
 });
 
-propLabel.addEventListener('input', () => {
+propLabel?.addEventListener('input', () => {
   const active = canvas.getActiveObject();
   if (!active || active.isFieldBg) return;
   if (active.type === 'i-text' || active.type === 'text') {
@@ -1570,7 +1949,7 @@ propLabel.addEventListener('input', () => {
   canvas.renderAll();
 });
 
-propColor.addEventListener('input', () => {
+propColor?.addEventListener('input', () => {
   const active = canvas.getActiveObject();
   if (!active || active.isFieldBg) return;
   if (active.type === 'i-text' || active.type === 'text') active.set({ fill: propColor.value });
@@ -1582,7 +1961,7 @@ propColor.addEventListener('input', () => {
   canvas.renderAll();
 });
 
-propFontsize.addEventListener('input', () => {
+propFontsize?.addEventListener('input', () => {
   if (propFontsizeValue) propFontsizeValue.textContent = String(propFontsize.value);
   const active = canvas.getActiveObject();
   if (!active || active.isFieldBg) return;
@@ -1591,7 +1970,7 @@ propFontsize.addEventListener('input', () => {
   canvas.renderAll();
 });
 
-propStroke.addEventListener('input', () => {
+propStroke?.addEventListener('input', () => {
   if (propStrokeValue) propStrokeValue.textContent = String(propStroke.value);
   const active = canvas.getActiveObject();
   if (!active || active.isFieldBg) return;
@@ -1609,14 +1988,13 @@ function getDiagramLabel(diagram) {
 
 function renderDiagramSelector() {
   if (!diagramSelect) return;
-  const options = ['<option value="">Nouveau diagramme</option>'];
-  currentDiagrams.forEach(diagram => {
-    options.push(`<option value="${diagram.id}">${escapeHtml(getDiagramLabel(diagram))}</option>`);
-  });
+  const options = [`<option value="" data-board-new-diagram-option="1" ${!currentDiagram ? 'selected' : ''}>Nouveau diagramme</option>`];
+  options.push(...currentDiagrams.map(diagram => `
+    <option value="${diagram.id}" ${currentDiagram?.id === diagram.id ? 'selected' : ''}>
+      ${escapeHtml(diagram.title || 'Sans titre')}${diagram.is_primary ? ' · Principal' : ''}
+    </option>
+  `));
   diagramSelect.innerHTML = options.join('');
-  diagramSelect.value = currentDiagram?.id ? String(currentDiagram.id) : '';
-  if (diagramTitleInput) diagramTitleInput.value = currentDiagram?.title || '';
-  if (diagramDateLabel) diagramDateLabel.textContent = currentDiagram?.updated_at ? new Date(currentDiagram.updated_at).toLocaleString() : 'Aucun';
 }
 
 async function loadDiagramsForTactic(tacticId) {
@@ -1635,17 +2013,58 @@ async function loadDiagramsForTactic(tacticId) {
 
 async function loadCurrentDiagramOrFallback(preferredDiagramId = null) {
   if (!currentTactic) return;
+
+  // If a specific diagram is requested explicitly, load it.
   let target = null;
-  if (preferredDiagramId) target = currentDiagrams.find(d => String(d.id) === String(preferredDiagramId)) || null;
-  if (!target && currentDiagram?.id) target = currentDiagrams.find(d => d.id === currentDiagram.id) || null;
-  if (!target) target = currentDiagrams.find(d => d.is_primary) || currentDiagrams[0] || null;
-  currentDiagram = target;
-  renderDiagramSelector();
-  if (target?.diagram_json) {
-    await loadDiagramJson(target.diagram_json);
+  if (preferredDiagramId) {
+    target = currentDiagrams.find(d => String(d.id) === String(preferredDiagramId)) || null;
+  }
+
+  // Default board entry from menu: start with a fresh horizontal board and no selected saved diagram.
+  if (!target) {
+    currentDiagram = null;
+    BOARD_ORIENTATION = 'horizontal';
+    updateBoardDimensionsForOrientation();
+    const size = computeResponsiveCanvasSize();
+    CANVAS_W = size.width;
+    CANVAS_H = size.height;
+    canvas.setWidth(CANVAS_W);
+    canvas.setHeight(CANVAS_H);
+    updateTerrainOrientationButton();
+    renderDiagramSelector();
+    canvas.getObjects().filter(o => !o.isFieldBg).forEach(o => canvas.remove(o));
+    canvas.discardActiveObject();
+    await renderFieldBackground();
+    resetViewport();
+    canvas.renderAll();
+    pushHistoryState();
     return;
   }
-  await loadDiagramJson(currentTactic.diagram_json);
+
+  currentDiagram = target;
+  renderDiagramSelector();
+
+  const payloadJson = target?.diagram_json || currentTactic?.diagram_json || null;
+  try {
+    const parsed = payloadJson ? unwrapStoredDiagramPayload(payloadJson) : null;
+    const targetOrientation = parsed?.board?.boardOrientation
+      ? (parsed.board.boardOrientation === 'vertical' ? 'vertical' : 'horizontal')
+      : 'horizontal';
+    BOARD_ORIENTATION = targetOrientation;
+    updateBoardDimensionsForOrientation();
+    const size = computeResponsiveCanvasSize();
+    CANVAS_W = size.width;
+    CANVAS_H = size.height;
+    canvas.setWidth(CANVAS_W);
+    canvas.setHeight(CANVAS_H);
+    updateTerrainOrientationButton();
+    await renderFieldBackground();
+    resetViewport();
+  } catch (e) {
+    console.warn(e);
+  }
+
+  await loadDiagramJson(payloadJson);
 }
 
 function beginNewDiagram() {
@@ -1658,8 +2077,7 @@ function beginNewDiagram() {
   renderDiagramSelector();
   canvas.getObjects().filter(o => !o.isFieldBg).forEach(o => canvas.remove(o));
   canvas.discardActiveObject();
-  renderFieldBackground();
-  resetViewport();
+  renderFieldBackground().then(() => resetViewport());
   canvas.renderAll();
   pushHistoryState();
   showAlert('Nouveau diagramme prêt. Dessine puis sauvegarde.', 'info');
@@ -1739,8 +2157,8 @@ async function applyTactic(id, preferredDiagramId = null) {
     currentDiagrams = [];
     currentDiagram = null;
     renderDiagramSelector();
-    openTacticBtn.href = 'tactics.html';
-    renderFieldBackground();
+    if (openTacticBtn) openTacticBtn && (openTacticBtn.href = 'tactics.html');
+    await renderFieldBackground();
     resetViewport();
     canvas.getObjects().filter(o => !o.isFieldBg).forEach(o => canvas.remove(o));
     canvas.discardActiveObject();
@@ -1751,11 +2169,10 @@ async function applyTactic(id, preferredDiagramId = null) {
   }
   boardTeamLabel.textContent = currentTactic.teams?.name || '—';
   if (presentationTitle) presentationTitle.textContent = currentTactic.title || 'Tactical Board';
-  openTacticBtn.href = `tactic-detail.html?id=${currentTactic.id}`;
+  if (openTacticBtn) openTacticBtn && (openTacticBtn.href = `tactic-detail.html?id=${currentTactic.id}`);
   await loadDiagramsForTactic(currentTactic.id);
   await loadCurrentDiagramOrFallback(preferredDiagramId);
 }
-
 
 async function loadDiagramJson(diagramJson) {
   animationKeyframes = [];
@@ -1763,15 +2180,40 @@ async function loadDiagramJson(diagramJson) {
   animationDurationMs = 0;
   clearAnimationWebMCache();
   updateAnimationControls();
-  canvas.clear();
-  renderFieldBackground();
-  resetViewport();
-  if (!diagramJson) { pushHistoryState(); return; }
+
+  let payload = null;
   try {
-    const payload = unwrapStoredDiagramPayload(diagramJson);
+    payload = diagramJson ? unwrapStoredDiagramPayload(diagramJson) : null;
+  } catch (_) {
+    payload = null;
+  }
+
+  const targetOrientation = payload?.board?.boardOrientation
+    ? (payload.board.boardOrientation === 'vertical' ? 'vertical' : 'horizontal')
+    : BOARD_ORIENTATION;
+
+  BOARD_ORIENTATION = targetOrientation;
+  updateBoardDimensionsForOrientation();
+  const size = computeResponsiveCanvasSize();
+  CANVAS_W = size.width;
+  CANVAS_H = size.height;
+  canvas.setWidth(CANVAS_W);
+  canvas.setHeight(CANVAS_H);
+  updateTerrainOrientationButton();
+
+  canvas.clear();
+  await renderFieldBackground();
+  resetViewport();
+
+  if (!diagramJson || !payload) {
+    pushHistoryState();
+    return;
+  }
+
+  try {
     const scaled = scaleDiagramJsonToCurrent(payload.board);
     await new Promise(resolve => canvas.loadFromJSON(scaled, resolve));
-    renderFieldBackground();
+    await renderFieldBackground();
     resetViewport();
     canvas.getObjects().filter(o => o.isFieldBg).forEach((o, idx) => canvas.moveTo(o, idx));
     ensureAnimIdsOnCanvas();
@@ -1786,7 +2228,7 @@ async function loadDiagramJson(diagramJson) {
     console.error(err);
     showAlert('Impossible de relire le diagramme sauvegardé. Un nouveau terrain vide a été chargé.', 'warning');
     canvas.clear();
-    renderFieldBackground();
+    await renderFieldBackground();
     resetViewport();
     pushHistoryState();
   }
@@ -1827,7 +2269,6 @@ async function generateAnimationWebMBlob() {
   const renderCanvas = await createRenderCanvasFromBaseState();
   return await recordCanvasAnimationToWebM(renderCanvas, { width: CANVAS_W, height: CANVAS_H, fps: 24 });
 }
-
 
 let saveProgressInterval = null;
 
@@ -1971,17 +2412,15 @@ async function saveBoard() {
   }
 }
 
-
 async function exportPng() {
   const blob = await exportCanvasBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
+  if (a) a.href = url;
   a.download = `${(currentTactic?.title || 'tactical-board').replace(/[^a-z0-9-_]+/gi, '-').toLowerCase()}.png`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
 
 function cloneSelected(offsetX = 24, offsetY = 24) {
   const active = canvas.getActiveObject();
@@ -2119,8 +2558,8 @@ async function toggleFullscreen() {
   else await document.exitFullscreen?.();
 }
 
-toolButtons.forEach(btn => btn.addEventListener('click', () => setTool(btn.dataset.tool)));
-tacticSelect.addEventListener('change', async () => applyTactic(selectedTacticId()));
+toolButtons.forEach(btn => btn?.addEventListener('click', () => setTool(btn.dataset.tool)));
+tacticSelect?.addEventListener('change', async () => applyTactic(selectedTacticId()));
 diagramSelect?.addEventListener('change', async () => {
   const id = diagramSelect.value;
   if (!id) { beginNewDiagram(); return; }
@@ -2131,22 +2570,22 @@ diagramSelect?.addEventListener('change', async () => {
 diagramNewBtn?.addEventListener('click', beginNewDiagram);
 diagramDeleteBtn?.addEventListener('click', async () => { try { await deleteCurrentDiagram(); } catch (err) { console.error(err); showAlert(err.message || 'Suppression impossible.', 'danger'); } });
 diagramPrimaryBtn?.addEventListener('click', async () => { try { await markCurrentAsPrimary(); } catch (err) { console.error(err); showAlert(err.message || 'Impossible de définir ce diagramme en principal.', 'danger'); } });
-saveBtn.addEventListener('click', saveBoard);
+saveBtn?.addEventListener('click', saveBoard);
 animationStartBtn?.addEventListener('click', startAnimationRecording);
 animationStopBtn?.addEventListener('click', stopAnimationRecording);
 animationPreviewBtn?.addEventListener('click', previewAnimation);
 animationResetBtn?.addEventListener('click', resetAnimationToStart);
 animationExportGifBtn?.addEventListener('click', exportAnimationGif);
-exportBtn.addEventListener('click', exportPng);
-clearBtn.addEventListener('click', clearBoard);
-deleteSelectedBtn.addEventListener('click', deleteSelected);
+exportBtn?.addEventListener('click', exportPng);
+clearBtn?.addEventListener('click', clearBoard);
+deleteSelectedBtn?.addEventListener('click', deleteSelected);
 duplicateSelectedBtn?.addEventListener('click', () => cloneSelected());
 copySelectedBtn?.addEventListener('click', copySelected);
 pasteSelectedBtn?.addEventListener('click', pasteCopied);
 templateOffenseBtn?.addEventListener('click', () => applyTemplate('offense'));
 templateDefenseBtn?.addEventListener('click', () => applyTemplate('defense'));
 templateSpecialBtn?.addEventListener('click', () => applyTemplate('special'));
-fullscreenBtn.addEventListener('click', toggleFullscreen);
+fullscreenBtn?.addEventListener('click', toggleFullscreen);
 
 presentationStage?.addEventListener('wheel', (e) => {
   if (!presentationMode) return;
@@ -2160,13 +2599,13 @@ presentationStage?.addEventListener('mousedown', (e) => {
   presentationDragStartX = e.clientX - presentationTranslateX;
   presentationDragStartY = e.clientY - presentationTranslateY;
 });
-window.addEventListener('mousemove', (e) => {
+window?.addEventListener('mousemove', (e) => {
   if (!presentationDragging || !presentationMode) return;
   presentationTranslateX = e.clientX - presentationDragStartX;
   presentationTranslateY = e.clientY - presentationDragStartY;
   updatePresentationTransform();
 });
-window.addEventListener('mouseup', () => {
+window?.addEventListener('mouseup', () => {
   presentationDragging = false;
 });
 
@@ -2197,9 +2636,9 @@ overlayZoomOutBtn?.addEventListener('click', () => zoomStep(1 / 1.15));
 overlayZoomResetBtn?.addEventListener('click', resetViewport);
 undoBtn?.addEventListener('click', undoBoard);
 redoBtn?.addEventListener('click', redoBoard);
-window.addEventListener('resize', () => { if (presentationMode) { fitPresentationImage(); return; } resizeBoardCanvas({ preserveObjects: true }); });
+window?.addEventListener('resize', () => { if (presentationMode) { fitPresentationImage(); return; } resizeBoardCanvas({ preserveObjects: true }); });
 
-window.addEventListener('keydown', (e) => {
+window?.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && presentationMode) { togglePresentationMode(false); return; }
   if (presentationMode) return;
   const ctrl = e.ctrlKey || e.metaKey;
@@ -2212,8 +2651,6 @@ window.addEventListener('keydown', (e) => {
   if (ctrl && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelected(); return; }
   if (ctrl && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteCopied(); return; }
 });
-
-
 
 // ---- Animated Arrows Engine (v8.7) ----
 function drawAnimatedArrow(ctx, x1, y1, x2, y2, progress){
@@ -2237,9 +2674,6 @@ function drawAnimatedArrow(ctx, x1, y1, x2, y2, progress){
   ctx.closePath();
   ctx.fill();
 }
-
-
-
 
 // ---- Player Path Engine (v8.8) ----
 function enablePathMode(){
@@ -2279,8 +2713,6 @@ function renderPlayerPaths(ctx){
   });
 }
 
-
-
 // ---- Path UI Fix (v8.8.1) ----
 function isPlayerMarkerObject(obj) {
   return !!obj && obj.type === 'group' && ['offense','defense'].includes(obj.pbType);
@@ -2292,7 +2724,7 @@ function getObjectCenter(obj) {
 }
 
 function buildPathPolyline(points, temporary = false) {
-  return new fabricLib.Polyline(points, {
+  const polyline = new fabricLib.Polyline(points, {
     fill: '',
     stroke: '#ffffff',
     strokeWidth: 3,
@@ -2302,8 +2734,11 @@ function buildPathPolyline(points, temporary = false) {
     pbType: 'player-path',
     isPlayerPath: true,
     strokeDashArray: [8, 6],
-    pathPlayerAnimId: pathPlayer?.animId || null
+    pathPlayerAnimId: pathPlayer?.animId || null,
+    pbAbsPoints: Array.isArray(points) ? points.map(pt => ({ x: Number(pt.x || 0), y: Number(pt.y || 0), time: Number(pt.time || 0) })) : []
   });
+  ensureAnimId(polyline);
+  return polyline;
 }
 
 function finishPlayerPath() {
@@ -2345,7 +2780,6 @@ function finishPlayerPath() {
   canvas.requestRenderAll();
 }
 
-
 // ---- Player Follow Path Engine (v8.9) ----
 function getPathLength(points) {
   let total = 0;
@@ -2386,7 +2820,6 @@ function getPathTiming(pathObj) {
   return { start, end, duration: Math.max(1, end - start) };
 }
 
-
 function applyPlayerPathsAtTimeForCanvas(playheadMs, targetCanvas = canvas) {
   if (!Array.isArray(playerPaths) || !playerPaths.length || !targetCanvas?.getObjects) return;
   const objs = targetCanvas.getObjects();
@@ -2422,7 +2855,6 @@ function capturePathOnFinish() {
   }
 }
 
-
 function normalizePlayerPathTimings(pathObj) {
   if (!pathObj || !Array.isArray(pathObj.points) || pathObj.points.length < 2) return pathObj;
   const pts = pathObj.points.map(pt => ({
@@ -2444,8 +2876,6 @@ function normalizePlayerPathTimings(pathObj) {
   }));
   return { ...pathObj, points: rebased };
 }
-
-
 
 // ---- Timeline Editor (v9.0) ----
 
@@ -2487,7 +2917,6 @@ function syncTimelineFromAnimation() {
   ensureTimelineControlsBound();
   timelineUpdateUI();
 }
-
 
 function timelineUpdateUI(){
   const timeLabel=document.getElementById("timeline-time");
@@ -2584,7 +3013,7 @@ function timelineSeek(ms){
   }
 }
 
-document.addEventListener("DOMContentLoaded",()=>{
+document?.addEventListener("DOMContentLoaded",()=>{
 
   const playBtn=document.getElementById("timeline-play");
   const pauseBtn=document.getElementById("timeline-pause");
@@ -2615,7 +3044,804 @@ queueMicrotask(() => {
   ensureTimelineControlsBound();
   syncTimelineFromAnimation();
 });
-document.addEventListener('DOMContentLoaded', () => {
+document?.addEventListener('DOMContentLoaded', () => {
   ensureTimelineControlsBound();
   syncTimelineFromAnimation();
+});
+
+// mobileResponsiveBoardEnhanceV915
+function mobileResponsiveBoardEnhanceV915() {
+  try {
+    const isMobile = window.matchMedia('(max-width: 767.98px)').matches;
+    document.querySelectorAll('.board-tool-btn').forEach((btn) => {
+      const label = btn.querySelector('.tool-label');
+      if (isMobile) {
+        if (label) label.style.display = 'none';
+        const title = btn.getAttribute('title') || btn.dataset.shortLabel || btn.textContent.trim();
+        btn.setAttribute('aria-label', title);
+      } else {
+        if (label) label.style.display = '';
+      }
+    });
+
+    const propsCol = document.querySelector('.board-props-col');
+    if (propsCol && isMobile) {
+      propsCol.style.display = 'block';
+      propsCol.hidden = false;
+      propsCol.classList.remove('d-none');
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+window?.addEventListener('resize', mobileResponsiveBoardEnhanceV915);
+document?.addEventListener('DOMContentLoaded', mobileResponsiveBoardEnhanceV915);
+queueMicrotask(() => mobileResponsiveBoardEnhanceV915());
+
+// relayoutMobileBoardActionsV916
+function relayoutMobileBoardActionsV916() {
+  try {
+    const isMobile = window.matchMedia('(max-width: 767.98px)').matches;
+    const mobileBar = document.getElementById('mobile-board-actions-bar');
+    if (!mobileBar) return;
+
+    if (!isMobile) {
+      mobileBar.innerHTML = '';
+      return;
+    }
+
+    const actionContainers = [
+      document.querySelector('.board-props-col .quick-actions'),
+      document.querySelector('.board-props-col .board-actions'),
+      document.querySelector('.board-props-col .board-props-actions')
+    ].filter(Boolean);
+
+    const buttons = [];
+    actionContainers.forEach((container) => {
+      container.querySelectorAll('button, a.btn').forEach((btn) => {
+        buttons.push(btn);
+      });
+    });
+
+    mobileBar.innerHTML = '';
+    const seen = new Set();
+    buttons.forEach((btn) => {
+      const key = btn.getAttribute('data-action') || btn.id || btn.textContent.trim();
+      if (seen.has(key)) return;
+      seen.add(key);
+      const clone = btn.cloneNode(true);
+      clone.classList.add('btn-sm');
+      clone.querySelectorAll('.btn-label').forEach((el) => el.remove());
+      const textNodes = Array.from(clone.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE);
+      textNodes.forEach((n) => { if (n.textContent.trim()) n.textContent = ''; });
+      const title = btn.getAttribute('title') || btn.getAttribute('aria-label') || btn.textContent.trim();
+      if (title) {
+        clone.setAttribute('title', title);
+        clone.setAttribute('aria-label', title);
+      }
+      // Forward clicks to original
+      clone?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof btn.click === 'function') btn.click();
+      });
+      mobileBar.appendChild(clone);
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+window?.addEventListener('resize', relayoutMobileBoardActionsV916);
+document?.addEventListener('DOMContentLoaded', relayoutMobileBoardActionsV916);
+queueMicrotask(() => relayoutMobileBoardActionsV916());
+
+// mobileBoardActionsPlacementFixV917
+function mobileBoardActionsPlacementFixV917() {
+  try {
+    const isCompact = window.matchMedia('(max-width: 991.98px)').matches;
+    const bar = document.getElementById('mobile-board-actions-bar');
+    const boardLayout = document.querySelector('.board-layout, .tactical-board-layout');
+    if (!bar || !boardLayout || !boardLayout.parentNode) return;
+
+    if (boardLayout.previousElementSibling !== bar) {
+      boardLayout.parentNode.insertBefore(bar, boardLayout);
+    }
+
+    if (!isCompact) {
+      bar.innerHTML = '';
+      return;
+    }
+
+    const actionContainers = [
+      document.querySelector('.board-props-col .quick-actions'),
+      document.querySelector('.board-props-col .board-actions'),
+      document.querySelector('.board-props-col .board-props-actions')
+    ].filter(Boolean);
+
+    const buttons = [];
+    actionContainers.forEach((container) => {
+      container.querySelectorAll('button, a.btn').forEach((btn) => buttons.push(btn));
+    });
+
+    bar.innerHTML = '';
+    const seen = new Set();
+
+    buttons.forEach((btn) => {
+      const key = btn.getAttribute('data-action') || btn.id || btn.textContent.trim();
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      const clone = btn.cloneNode(true);
+      clone.classList.add('btn-sm');
+
+      clone.querySelectorAll('.btn-label').forEach((el) => el.remove());
+      Array.from(clone.childNodes).forEach((n) => {
+        if (n.nodeType === Node.TEXT_NODE && n.textContent.trim()) {
+          n.textContent = '';
+        }
+      });
+
+      const title = btn.getAttribute('title') || btn.getAttribute('aria-label') || btn.textContent.trim();
+      if (title) {
+        clone.setAttribute('title', title);
+        clone.setAttribute('aria-label', title);
+      }
+
+      clone?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (btn.tagName.toLowerCase() === 'a' && btn.href) {
+          window.window.location.href = btn.href;
+          return;
+        }
+        if (typeof btn.click === 'function') btn.click();
+      });
+
+      bar.appendChild(clone);
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+window?.addEventListener('resize', mobileBoardActionsPlacementFixV917);
+document?.addEventListener('DOMContentLoaded', mobileBoardActionsPlacementFixV917);
+queueMicrotask(() => mobileBoardActionsPlacementFixV917());
+
+// toolbarActionsMoveFromPropsV919
+function resetBoardCompletelyV919() {
+  try {
+    if (!window.canvas || typeof canvas.getObjects !== 'function') return;
+
+    timelinePause?.();
+
+    const objects = canvas.getObjects().slice();
+    objects.forEach((obj) => {
+      try {
+        canvas.remove(obj);
+      } catch (e) {
+        console.warn(e);
+      }
+    });
+
+    try { canvas.discardActiveObject?.(); } catch (e) {}
+
+    // Clear animation/path/runtime states
+    if (typeof playerPaths !== 'undefined') playerPaths = [];
+    if (typeof animationKeyframes !== 'undefined') animationKeyframes = [];
+    if (typeof animationBaseState !== 'undefined') animationBaseState = null;
+    if (typeof animationDurationMs !== 'undefined') animationDurationMs = 0;
+    if (typeof animationRecording !== 'undefined') animationRecording = false;
+    if (typeof animationStartTs !== 'undefined') animationStartTs = 0;
+    if (typeof currentPath !== 'undefined') currentPath = [];
+    if (typeof pathPoints !== 'undefined') pathPoints = [];
+    if (typeof pathDrawing !== 'undefined') pathDrawing = false;
+    if (typeof pathPlayer !== 'undefined') pathPlayer = null;
+    if (typeof pathTempPolyline !== 'undefined') pathTempPolyline = null;
+    if (typeof timelineDuration !== 'undefined') timelineDuration = 0;
+    if (typeof timelineTime !== 'undefined') timelineTime = 0;
+
+    // Reset persisted/working board payloads if present
+    if (typeof currentDiagramJson !== 'undefined') currentDiagramJson = null;
+    if (typeof currentDiagramState !== 'undefined') currentDiagramState = null;
+
+    // Re-render empty field only
+    canvas.renderAll?.();
+    timelineUpdateUI?.();
+    updateSelectionUI?.();
+
+    showAlert?.('Terrain réinitialisé.', 'success');
+  } catch (e) {
+    console.warn(e);
+    showAlert?.('Réinitialisation impossible.', 'danger');
+  }
+}
+
+function bindToolbarActionsV919() {
+  const resetBtn = document.getElementById('toolbar-reset-board-btn');
+  const duplicateBtn = document.getElementById('toolbar-duplicate-btn');
+  const copyBtn = document.getElementById('toolbar-copy-btn');
+  const pasteBtn = document.getElementById('toolbar-paste-btn');
+  const deleteBtn = document.getElementById('toolbar-delete-btn');
+
+  const forwardClick = (selector, fallback) => {
+    const original = document.querySelector(selector);
+    if (original) {
+      original.click();
+      return;
+    }
+    if (typeof fallback === 'function') fallback();
+  };
+
+  if (duplicateBtn && !duplicateBtn.dataset.bound) {
+    duplicateBtn.dataset.bound = '1';
+    duplicateBtn?.addEventListener('click', () => {
+      forwardClick('.board-props-col [data-action="duplicate"], .board-props-col .quick-actions .btn-outline-info, .board-props-col .board-actions .btn-outline-info');
+    });
+  }
+
+  if (copyBtn && !copyBtn.dataset.bound) {
+    copyBtn.dataset.bound = '1';
+    copyBtn?.addEventListener('click', () => {
+      forwardClick('.board-props-col [data-action="copy"], .board-props-col .quick-actions .btn-outline-primary, .board-props-col .board-actions .btn-outline-primary');
+    });
+  }
+
+  if (pasteBtn && !pasteBtn.dataset.bound) {
+    pasteBtn.dataset.bound = '1';
+    pasteBtn?.addEventListener('click', () => {
+      forwardClick('.board-props-col [data-action="paste"], .board-props-col .quick-actions .btn-outline-success, .board-props-col .board-actions .btn-outline-success');
+    });
+  }
+
+  if (deleteBtn && !deleteBtn.dataset.bound) {
+    deleteBtn.dataset.bound = '1';
+    deleteBtn?.addEventListener('click', () => {
+      forwardClick('.board-props-col [data-action="delete"], .board-props-col .quick-actions .btn-outline-danger, .board-props-col .board-actions .btn-outline-danger', () => {
+        const active = canvas?.getActiveObject?.();
+        if (active) {
+          try { canvas.remove(active); canvas.renderAll(); } catch (e) {}
+        }
+      });
+    });
+  }
+
+  if (resetBtn && !resetBtn.dataset.bound) {
+    resetBtn.dataset.bound = '1';
+    resetBtn?.addEventListener('click', () => {
+      resetBoardCompletelyV919();
+    });
+  }
+}
+
+document?.addEventListener('DOMContentLoaded', bindToolbarActionsV919);
+queueMicrotask(() => bindToolbarActionsV919());
+
+// toolbarActionsVisualFixV920
+function toolbarActionsVisualFixV920() {
+  try {
+    const actionBtns = document.querySelectorAll('.board-toolbar-action');
+    actionBtns.forEach((btn) => {
+      btn.classList.remove('active');
+      btn.setAttribute('data-no-tool-active', '1');
+      btn?.addEventListener('mousedown', () => btn.classList.remove('active'));
+      btn?.addEventListener('mouseup', () => btn.classList.remove('active'));
+      btn?.addEventListener('click', () => {
+        setTimeout(() => btn.classList.remove('active'), 0);
+      });
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+document?.addEventListener('DOMContentLoaded', toolbarActionsVisualFixV920);
+queueMicrotask(() => toolbarActionsVisualFixV920());
+
+// toolbarActionsDirectHandlersV924
+function getSelectedBoardObjectV924() {
+  try {
+    return canvas?.getActiveObject?.() || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function duplicateSelectedObjectV924() {
+  try {
+    const active = getSelectedBoardObjectV924();
+    if (!active) {
+      showAlert?.('Sélectionnez un élément à dupliquer.', 'warning');
+      return;
+    }
+    if (typeof active.clone === 'function') {
+      active.clone((cloned) => {
+        if (!cloned) return;
+        cloned.set({
+          left: Number(active.left || 0) + 20,
+          top: Number(active.top || 0) + 20
+        });
+        canvas.add(cloned);
+        canvas.setActiveObject(cloned);
+        canvas.renderAll?.();
+      });
+    } else {
+      showAlert?.('Duplication non disponible pour cet élément.', 'warning');
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+function deleteSelectedObjectV924() {
+  try {
+    const active = getSelectedBoardObjectV924();
+    if (!active) {
+      showAlert?.('Sélectionnez un élément à supprimer.', 'warning');
+      return;
+    }
+    canvas.remove?.(active);
+    canvas.discardActiveObject?.();
+    canvas.renderAll?.();
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+function copySelectedObjectV924() {
+  try {
+    const active = getSelectedBoardObjectV924();
+    if (!active) {
+      showAlert?.('Sélectionnez un élément à copier.', 'warning');
+      return;
+    }
+    if (typeof active.clone === 'function') {
+      active.clone((cloned) => {
+        window.__tacticBoardClipboard = cloned;
+        showAlert?.('Élément copié.', 'success');
+      });
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+function pasteSelectedObjectV924() {
+  try {
+    const clip = window.__tacticBoardClipboard;
+    if (!clip) {
+      showAlert?.('Aucun élément copié.', 'warning');
+      return;
+    }
+    if (typeof clip.clone === 'function') {
+      clip.clone((cloned) => {
+        cloned.set({
+          left: Number(clip.left || 0) + 20,
+          top: Number(clip.top || 0) + 20
+        });
+        canvas.add(cloned);
+        canvas.setActiveObject(cloned);
+        canvas.renderAll?.();
+      });
+    } else {
+      const cloned = fabricLib.util.object.clone(clip);
+      if (cloned) {
+        canvas.add(cloned);
+        canvas.setActiveObject(cloned);
+        canvas.renderAll?.();
+      }
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+function bindToolbarActionsDirectV924() {
+  const duplicateBtn = document.getElementById('toolbar-duplicate-btn');
+  const copyBtn = document.getElementById('toolbar-copy-btn');
+  const pasteBtn = document.getElementById('toolbar-paste-btn');
+  const deleteBtn = document.getElementById('toolbar-delete-btn');
+
+  if (duplicateBtn && !duplicateBtn.dataset.directBound) {
+    duplicateBtn.dataset.directBound = '1';
+    duplicateBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      duplicateSelectedObjectV924();
+    });
+  }
+  if (copyBtn && !copyBtn.dataset.directBound) {
+    copyBtn.dataset.directBound = '1';
+    copyBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      copySelectedObjectV924();
+    });
+  }
+  if (pasteBtn && !pasteBtn.dataset.directBound) {
+    pasteBtn.dataset.directBound = '1';
+    pasteBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      pasteSelectedObjectV924();
+    });
+  }
+  if (deleteBtn && !deleteBtn.dataset.directBound) {
+    deleteBtn.dataset.directBound = '1';
+    deleteBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      deleteSelectedObjectV924();
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', bindToolbarActionsDirectV924);
+queueMicrotask(() => bindToolbarActionsDirectV924());
+
+function bindTerrainOrientationButtonV930() {
+  const btn = document.getElementById('terrain-orientation-btn');
+  if (btn && !btn.dataset.boundTerrainOrientation) {
+    btn.dataset.boundTerrainOrientation = '1';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      toggleBoardOrientation();
+    });
+  }
+  updateTerrainOrientationButton();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  bindTerrainOrientationButtonV930();
+  updateTerrainOrientationButton();
+});
+queueMicrotask(() => {
+  bindTerrainOrientationButtonV930();
+  updateTerrainOrientationButton();
+});
+
+// orientationSmartConstraintsV935
+function makeOrientationPointMapper(prevW, prevH, newW, newH, fromOrientation = 'horizontal', toOrientation = 'vertical') {
+  return (x, y) => {
+    const px = Number(x || 0) / Math.max(1, prevW);
+    const py = Number(y || 0) / Math.max(1, prevH);
+    if (fromOrientation === 'horizontal' && toOrientation === 'vertical') {
+      return { x: py * newW, y: (1 - px) * newH };
+    }
+    if (fromOrientation === 'vertical' && toOrientation === 'horizontal') {
+      return { x: (1 - py) * newW, y: px * newH };
+    }
+    return { x: px * newW, y: py * newH };
+  };
+}
+
+function transformSerializedObjectByTypeV935(obj, prevW, prevH, newW, newH, fromOrientation, toOrientation) {
+  const mapPoint = makeOrientationPointMapper(prevW, prevH, newW, newH, fromOrientation, toOrientation);
+  const angleDelta = fromOrientation === 'horizontal' && toOrientation === 'vertical' ? 90
+    : fromOrientation === 'vertical' && toOrientation === 'horizontal' ? -90
+    : 0;
+  const o = JSON.parse(JSON.stringify(obj || {}));
+
+  if (o.pbType === 'zone') {
+    const p1 = mapPoint(Number(o.left || 0), Number(o.top || 0));
+    const p2 = mapPoint(Number(o.left || 0) + Number(o.width || 0), Number(o.top || 0) + Number(o.height || 0));
+    o.left = Math.min(p1.x, p2.x);
+    o.top = Math.min(p1.y, p2.y);
+    o.width = Math.abs(p2.x - p1.x);
+    o.height = Math.abs(p2.y - p1.y);
+    return o;
+  }
+
+  if (o.pbType === 'line' || (typeof o.x1 === 'number' && typeof o.y1 === 'number' && typeof o.x2 === 'number' && typeof o.y2 === 'number')) {
+    const p1 = mapPoint(o.x1, o.y1);
+    const p2 = mapPoint(o.x2, o.y2);
+    o.x1 = p1.x; o.y1 = p1.y; o.x2 = p2.x; o.y2 = p2.y;
+    return o;
+  }
+
+  if (o.pbType === 'player-path' && Array.isArray(o.points)) {
+    o.points = o.points.map((pt) => {
+      const p = mapPoint(pt.x, pt.y);
+      return { ...pt, x: p.x, y: p.y };
+    });
+    return o;
+  }
+
+  if (['arrow','pass-arrow','curved-arrow'].includes(o.pbType) && o.pbCoords) {
+    const p1 = mapPoint(o.pbCoords.x1, o.pbCoords.y1);
+    const p2 = mapPoint(o.pbCoords.x2, o.pbCoords.y2);
+    const pc = (typeof o.pbCoords.cx === 'number' && typeof o.pbCoords.cy === 'number') ? mapPoint(o.pbCoords.cx, o.pbCoords.cy) : null;
+    o.pbCoords = {
+      ...o.pbCoords,
+      x1: p1.x, y1: p1.y,
+      x2: p2.x, y2: p2.y,
+      cx: pc ? pc.x : o.pbCoords.cx,
+      cy: pc ? pc.y : o.pbCoords.cy
+    };
+    return o;
+  }
+
+  if (Array.isArray(o.points)) {
+    o.points = o.points.map((pt) => {
+      const p = mapPoint(pt.x, pt.y);
+      return { ...pt, x: p.x, y: p.y };
+    });
+  }
+
+  if (typeof o.left === 'number' && typeof o.top === 'number') {
+    const p = mapPoint(o.left, o.top);
+    o.left = p.x;
+    o.top = p.y;
+  }
+
+  if (typeof o.angle === 'number') {
+    o.angle = (o.angle + angleDelta + 360) % 360;
+  }
+
+  return o;
+}
+
+function applySmartConstraintsToObjectV935(obj) {
+  if (!obj || obj.isFieldBg) return;
+  try {
+    if (obj.pbType === 'line' && typeof obj.x1 === 'number' && typeof obj.y1 === 'number' && typeof obj.x2 === 'number' && typeof obj.y2 === 'number') {
+      const minX = Math.min(obj.x1, obj.x2), maxX = Math.max(obj.x1, obj.x2);
+      const minY = Math.min(obj.y1, obj.y2), maxY = Math.max(obj.y1, obj.y2);
+      let dx = 0, dy = 0;
+      if (minX < 0) dx = -minX;
+      if (maxX > CANVAS_W) dx = CANVAS_W - maxX;
+      if (minY < 0) dy = -minY;
+      if (maxY > CANVAS_H) dy = CANVAS_H - maxY;
+      if (dx || dy) obj.set({ x1: obj.x1 + dx, x2: obj.x2 + dx, y1: obj.y1 + dy, y2: obj.y2 + dy });
+      obj.setCoords?.();
+      return;
+    }
+
+    if (obj.pbType === 'zone') {
+      const rect = obj.getBoundingRect ? obj.getBoundingRect(true, true) : null;
+      if (!rect) return;
+      let dx = 0, dy = 0;
+      if (rect.left < 0) dx = -rect.left;
+      if (rect.top < 0) dy = -rect.top;
+      if (rect.left + rect.width > CANVAS_W) dx = CANVAS_W - (rect.left + rect.width);
+      if (rect.top + rect.height > CANVAS_H) dy = CANVAS_H - (rect.top + rect.height);
+      if (dx || dy) {
+        obj.left = Number(obj.left || 0) + dx;
+        obj.top = Number(obj.top || 0) + dy;
+        obj.setCoords?.();
+      }
+      return;
+    }
+
+    if (obj.pbType === 'player-path' && Array.isArray(obj.points)) {
+      obj.points = obj.points.map((pt) => ({
+        ...pt,
+        x: Math.max(0, Math.min(CANVAS_W, Number(pt.x || 0))),
+        y: Math.max(0, Math.min(CANVAS_H, Number(pt.y || 0)))
+      }));
+      obj.set({ points: obj.points });
+      obj.setCoords?.();
+      return;
+    }
+
+    const rect = obj.getBoundingRect ? obj.getBoundingRect(true, true) : null;
+    if (!rect) return;
+    let dx = 0, dy = 0;
+    if (rect.left < 0) dx = -rect.left;
+    if (rect.top < 0) dy = -rect.top;
+    if (rect.left + rect.width > CANVAS_W) dx = CANVAS_W - (rect.left + rect.width);
+    if (rect.top + rect.height > CANVAS_H) dy = CANVAS_H - (rect.top + rect.height);
+    if (dx || dy) {
+      obj.left = Number(obj.left || 0) + dx;
+      obj.top = Number(obj.top || 0) + dy;
+      obj.setCoords?.();
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+function rebuildPathPolylineForOrientationV938(orig, mappedPoints, existingTarget) {
+  const rebuilt = buildPathPolyline(mappedPoints, false);
+  rebuilt.animId = existingTarget?.animId || orig?.animId || rebuilt.animId;
+  rebuilt.labelText = existingTarget?.labelText || orig?.labelText || 'Path';
+  rebuilt.pathPlayerAnimId = existingTarget?.pathPlayerAnimId || orig?.pathPlayerAnimId || null;
+  rebuilt.pbAbsPoints = mappedPoints.map(pt => ({ x: pt.x, y: pt.y, time: Number(pt.time || 0) }));
+  return rebuilt;
+}
+
+function postProcessObjectsAfterOrientationV935(originalObjects, prevW, prevH, newW, newH, fromOrientation, toOrientation) {
+  if (!Array.isArray(originalObjects)) return;
+  const byAnimId = new Map((canvas.getObjects?.() || []).map((o) => [String(o.animId || ''), o]).filter(([id]) => id));
+
+  const mapPoint = makeOrientationPointMapper(prevW, prevH, newW, newH, fromOrientation, toOrientation);
+  const angleDelta = fromOrientation === 'horizontal' && toOrientation === 'vertical' ? 90
+    : fromOrientation === 'vertical' && toOrientation === 'horizontal' ? -90
+    : 0;
+
+  originalObjects.forEach((orig) => {
+    const animId = String(orig?.animId || '');
+    let target = byAnimId.get(animId);
+    if (!target) return;
+
+    // Rebuild grouped arrows from coords
+    if (['arrow','pass-arrow','curved-arrow'].includes(orig.pbType) && orig.pbCoords) {
+      try {
+        const transformed = transformSerializedObjectByTypeV935(orig, prevW, prevH, newW, newH, fromOrientation, toOrientation);
+        const color = transformed.pbColor || '#ffab00';
+        const width = Number(transformed.pbStrokeWidth || 4);
+        let rebuilt = null;
+        if (orig.pbType === 'arrow') rebuilt = buildArrow(transformed.pbCoords.x1, transformed.pbCoords.y1, transformed.pbCoords.x2, transformed.pbCoords.y2, color, width);
+        if (orig.pbType === 'pass-arrow') rebuilt = buildPassArrow(transformed.pbCoords.x1, transformed.pbCoords.y1, transformed.pbCoords.x2, transformed.pbCoords.y2, color, width);
+        if (orig.pbType === 'curved-arrow') rebuilt = buildCurvedArrow(transformed.pbCoords.x1, transformed.pbCoords.y1, transformed.pbCoords.x2, transformed.pbCoords.y2, color, width, Number(transformed.pbCurveSide || 1));
+        if (rebuilt) {
+          rebuilt.animId = target.animId || transformed.animId || orig.animId;
+          rebuilt.labelText = target.labelText || transformed.labelText || '';
+          canvas.remove(target);
+          canvas.add(rebuilt);
+          byAnimId.set(animId, rebuilt);
+          target = rebuilt;
+        }
+        applySmartConstraintsToObjectV935(target);
+      } catch (e) {
+        console.warn(e);
+      }
+      return;
+    }
+
+    // Rebuild line from mapped endpoints using stored absolute coords when available
+    if (orig.pbType === 'line') {
+      try {
+        const source = orig.pbCoords && typeof orig.pbCoords.x1 === 'number'
+          ? orig.pbCoords
+          : { x1: orig.x1, y1: orig.y1, x2: orig.x2, y2: orig.y2 };
+        const p1 = mapPoint(source.x1, source.y1);
+        const p2 = mapPoint(source.x2, source.y2);
+        const rebuilt = new fabricLib.Line([p1.x, p1.y, p2.x, p2.y], {
+          stroke: orig.stroke || target.stroke || '#ffffff',
+          strokeWidth: Number(orig.strokeWidth || target.strokeWidth || 4),
+          opacity: typeof orig.opacity === 'number' ? orig.opacity : (typeof target.opacity === 'number' ? target.opacity : 1),
+          pbType: 'line',
+          pbCoords: { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y }
+        });
+        rebuilt.animId = target.animId || orig.animId;
+        rebuilt.labelText = target.labelText || orig.labelText || '';
+        canvas.remove(target);
+        canvas.add(rebuilt);
+        byAnimId.set(animId, rebuilt);
+        target = rebuilt;
+        applySmartConstraintsToObjectV935(target);
+      } catch (e) {
+        console.warn(e);
+      }
+      return;
+    }
+
+    // Keep zone centered and swap dimensions so it visually rotates without drift
+    if (orig.pbType === 'zone') {
+      try {
+        const left = Number(orig.left || 0);
+        const top = Number(orig.top || 0);
+        const width0 = Number(orig.width || 0) * Number(orig.scaleX || 1);
+        const height0 = Number(orig.height || 0) * Number(orig.scaleY || 1);
+        const centerX = left + (width0 / 2);
+        const centerY = top + (height0 / 2);
+        const mappedCenter = mapPoint(centerX, centerY);
+
+        const widthScaled = (width0 / Math.max(1, prevW)) * newW;
+        const heightScaled = (height0 / Math.max(1, prevH)) * newH;
+
+        const finalWidth = fromOrientation !== toOrientation ? Math.max(8, heightScaled) : Math.max(8, widthScaled);
+        const finalHeight = fromOrientation !== toOrientation ? Math.max(8, widthScaled) : Math.max(8, heightScaled);
+
+        target.set({
+          originX: 'center',
+          originY: 'center',
+          left: mappedCenter.x,
+          top: mappedCenter.y,
+          width: finalWidth,
+          height: finalHeight,
+          scaleX: 1,
+          scaleY: 1,
+          angle: 0
+        });
+        target.setCoords?.();
+        applySmartConstraintsToObjectV935(target);
+      } catch (e) {
+        console.warn(e);
+      }
+      return;
+    }
+
+    if (orig.pbType === 'player-path') {
+      try {
+        const sourcePoints = Array.isArray(orig.pbAbsPoints) && orig.pbAbsPoints.length ? orig.pbAbsPoints : (Array.isArray(orig.points) ? orig.points : []);
+        const mappedPoints = sourcePoints.map((pt) => {
+          const p = mapPoint(pt.x, pt.y);
+          return { ...pt, x: p.x, y: p.y };
+        });
+        const rebuilt = rebuildPathPolylineForOrientationV938(orig, mappedPoints, target);
+        canvas.remove(target);
+        canvas.add(rebuilt);
+        byAnimId.set(animId, rebuilt);
+        target = rebuilt;
+        applySmartConstraintsToObjectV935(target);
+      } catch (e) {
+        console.warn(e);
+      }
+      return;
+    }
+
+    const transformed = transformSerializedObjectByTypeV935(orig, prevW, prevH, newW, newH, fromOrientation, toOrientation);
+    if (orig.pbType === 'text') {
+      target.set({
+        left: transformed.left,
+        top: transformed.top,
+        angle: transformed.angle
+      });
+      target.setCoords?.();
+      applySmartConstraintsToObjectV935(target);
+      return;
+    }
+
+    if (typeof transformed.left === 'number' && typeof transformed.top === 'number') {
+      target.set({ left: transformed.left, top: transformed.top });
+      if (typeof transformed.angle === 'number') target.set({ angle: transformed.angle });
+      target.setCoords?.();
+      applySmartConstraintsToObjectV935(target);
+    }
+  });
+
+  canvas.renderAll?.();
+}
+
+// mobileTabletBoardRefitV936
+function mobileTabletBoardRefitV936() {
+  try {
+    resizeBoardCanvas({ preserveObjects: true });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+window.addEventListener('load', () => setTimeout(() => mobileTabletBoardRefitV936(), 60));
+
+// disablePresentationInTacticalBoardV948
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    presentationMode = false;
+    document.querySelectorAll('[id*="presentation" i],[data-action="presentation"]').forEach((el) => {
+      el.style.display = 'none';
+      if ('disabled' in el) el.disabled = true;
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+});
+
+
+// defaultNewDiagramBoardEntryV952
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    if (diagramSelect && !diagramSelect.dataset.boundNewDiagramV952) {
+      diagramSelect.dataset.boundNewDiagramV952 = '1';
+      diagramSelect.addEventListener('change', async (e) => {
+        const value = e.target.value || '';
+        if (!value) {
+          currentDiagram = null;
+          BOARD_ORIENTATION = 'horizontal';
+          updateBoardDimensionsForOrientation();
+          const size = computeResponsiveCanvasSize();
+          CANVAS_W = size.width;
+          CANVAS_H = size.height;
+          canvas.setWidth(CANVAS_W);
+          canvas.setHeight(CANVAS_H);
+          updateTerrainOrientationButton();
+          canvas.getObjects().filter(o => !o.isFieldBg).forEach(o => canvas.remove(o));
+          canvas.discardActiveObject();
+          await renderFieldBackground();
+          resetViewport();
+          canvas.renderAll();
+          pushHistoryState();
+        }
+      });
+    }
+  } catch (e) {
+    console.warn(e);
+  }
 });

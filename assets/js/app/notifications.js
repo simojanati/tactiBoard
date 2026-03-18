@@ -1,7 +1,8 @@
 import { activateMenu, bindFormSubmit, escapeHtml, setAppTitle, showAlert, supabase } from './common.js';
 import { canAdmin, getUserContext } from './auth.js';
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
-setAppTitle('Notifications');
+setAppTitle(tt('page.notifications', 'Notifications'));
 activateMenu('notifications');
 
 const listHost = document.getElementById('notifications-list');
@@ -36,7 +37,7 @@ async function loadProfilesForAdmin() {
 }
 
 async function loadNotifications() {
-  listHost.innerHTML = '<div class="p-4 text-muted">Chargement...</div>';
+  listHost.innerHTML = `<div class="p-4 text-muted">${tt('notifications.loading', 'Chargement...')}</div>`;
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
@@ -44,9 +45,9 @@ async function loadNotifications() {
     .order('created_at', { ascending: false });
   if (error) throw error;
   const unread = (data || []).filter(item => !item.is_read).length;
-  metaEl.textContent = `${(data || []).length} notification(s) · ${unread} non lue(s)`;
+  metaEl.textContent = tt('notifications.meta', '{total} notification(s) · {unread} non lue(s)').replace('{total}', (data || []).length).replace('{unread}', unread);
   if (!data?.length) {
-    listHost.innerHTML = '<div class="p-4 text-muted">Aucune notification pour le moment.</div>';
+    listHost.innerHTML = `<div class="p-4 text-muted">${tt('notifications.none', 'Aucune notification pour le moment.')}</div>`;
     return;
   }
   listHost.innerHTML = data.map(item => `
@@ -55,7 +56,7 @@ async function loadNotifications() {
         <div>
           <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
             <span class="badge bg-label-${typeBadge(item.type)}">${escapeHtml(item.type || 'info')}</span>
-            ${item.is_read ? '<span class="badge bg-label-secondary">Lue</span>' : '<span class="badge bg-label-danger">Non lue</span>'}
+            ${item.is_read ? `<span class="badge bg-label-secondary">${tt('notifications.read', 'Lue')}</span>` : `<span class="badge bg-label-danger">${tt('notifications.unread', 'Non lue')}</span>`}
           </div>
           <div class="fw-semibold mb-1">${escapeHtml(item.title || '')}</div>
           <div class="text-muted mb-2">${escapeHtml(item.body || '')}</div>
@@ -112,3 +113,8 @@ document.getElementById('notify-form')?.addEventListener('submit', async () => {
 refreshBtn?.addEventListener('click', loadNotifications);
 await loadProfilesForAdmin();
 await loadNotifications();
+
+
+document.addEventListener('app:language-changed', () => {
+  try { loadNotifications().catch(console.error); } catch (e) { console.warn(e); }
+});

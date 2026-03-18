@@ -128,19 +128,18 @@
               <p class="mb-0 text-muted">Dessine, explique et exporte un schéma tactique pro pour une tactique existante.</p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
-              <a href="tactics.html" class="btn btn-outline-secondary"><i class="bx bx-arrow-back me-1"></i>Retour</a>
-              <button class="btn btn-outline-dark" id="fullscreen-btn" type="button"><i class="bx bx-fullscreen me-1"></i>Plein écran</button>
-              <button class="btn btn-outline-primary" id="presentation-btn" type="button"><i class="bx bx-slideshow me-1"></i>Présentation</button>
-              <button class="btn btn-outline-warning" id="clear-btn" type="button"><i class="bx bx-eraser me-1"></i>Vider</button>
+              <a href="tactics.html" class="btn btn-outline-secondary"><i class="bx bx-arrow-back me-1"></i data-i18n="board.back">Retour</a>
+              <button class="btn btn-outline-dark" id="fullscreen-btn" type="button"><i class="bx bx-fullscreen me-1"></i data-i18n="board.fullscreen">Plein écran</button>
+              <button class="btn btn-outline-warning" id="clear-btn" type="button"><i class="bx bx-eraser me-1"></i data-i18n="board.clear">Vider</button>
               <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-outline-secondary btn-sm" id="zoom-out-btn" type="button" title="Zoom -"><i class="bx bx-minus"></i></button>
                 <span class="badge bg-label-primary d-inline-flex align-items-center justify-content-center" id="zoom-badge">100%</span>
                 <button class="btn btn-outline-secondary btn-sm" id="zoom-in-btn" type="button" title="Zoom +"><i class="bx bx-plus"></i></button>
                 <button class="btn btn-outline-secondary btn-sm" id="zoom-reset-btn" type="button" title="Reset zoom"><i class="bx bx-reset"></i></button>
               </div>
-              <button class="btn btn-outline-primary" id="export-btn" type="button"><i class="bx bx-download me-1"></i>Exporter PNG</button>
+              <button class="btn btn-outline-primary" id="export-btn" type="button"><i class="bx bx-download me-1"></i data-i18n="board.export_png">Exporter PNG</button>
               <div class="d-flex align-items-center gap-2 flex-wrap">
-                <button class="btn btn-primary" id="save-btn" type="button"><i class="bx bx-save me-1"></i>Sauvegarder</button>
+                <button class="btn btn-primary" id="save-btn" type="button"><i class="bx bx-save me-1"></i data-i18n="board.save">Sauvegarder</button>
                 <span id="save-progress-chip" class="badge bg-label-secondary d-none"></span>
               </div>
             </div>
@@ -155,17 +154,17 @@
                 <div class="card-body pb-0 board-meta-row">
                   <div class="row g-3">
                     <div class="col-lg-6">
-                      <label class="form-label">Tactique liée</label>
+                      <label class="form-label" data-i18n="board.related_tactic">Tactique liée</label>
                       <select id="tactic-select" class="form-select"></select>
                     </div>
                     <div class="col-lg-6">
-                      <label class="form-label">Équipe</label>
+                      <label class="form-label" data-i18n="board.team">Équipe</label>
                       <div class="form-control bg-lighter" id="board-team-label">—</div>
                     </div>
                     <div class="col-12">
                       <div class="row g-3 align-items-end board-diagram-row">
                         <div class="col-lg-6">
-                          <label class="form-label">Diagramme</label>
+                          <label class="form-label" data-i18n="board.diagram">Diagramme</label>
                           <div class="diagram-toolbar-row">
                             <select id="diagram-select" class="form-select"></select>
                             <div class="diagram-toolbar-actions">
@@ -189,16 +188,15 @@
                       </div>
                     </div>
 
-
                           </div>
                         </div>
                         <div class="col-lg-3 col-md-6">
-                          <label class="form-label">Nom du diagramme</label>
+                          <label class="form-label" data-i18n="board.name">Nom du diagramme</label>
                           <input id="diagram-title-input" class="form-control" placeholder="Ex: Variante droite" />
                         </div>
                         <div class="col-lg-3 col-md-6">
-                          <label class="form-label">Dernière mise à jour</label>
-                          <div class="form-control bg-lighter" id="diagram-date-label">Aucun</div>
+                          <label class="form-label" data-i18n="board.last_update">Dernière mise à jour</label>
+                          <div class="form-control bg-lighter" id="diagram-date-label" data-i18n="common.none">Aucun</div>
                         </div>
                       </div>
                     </div>
@@ -206,43 +204,65 @@
                 </div>
                 <div class="card-body">
                   <div class="d-flex flex-wrap align-items-center gap-2 mb-3 board-animation-controls">
-  <button class="btn btn-danger btn-sm" id="animation-start-btn" type="button"><i class="bx bx-radio-circle-marked me-1"></i>Start</button>
-  <button class="btn btn-outline-secondary btn-sm" id="animation-stop-btn" type="button" disabled><i class="bx bx-stop-circle me-1"></i>Terminer</button>
-  <button class="btn btn-outline-primary btn-sm" id="animation-preview-btn" type="button" disabled><i class="bx bx-play-circle me-1"></i>Preview</button>
-  <button class="btn btn-outline-dark btn-sm" id="animation-reset-btn" type="button" disabled><i class="bx bx-reset me-1"></i>Reset</button>
-  <button class="btn btn-outline-success btn-sm" id="animation-export-gif-btn" type="button" disabled><i class="bx bx-film me-1"></i>Exporter WebM</button>
-  <span class="badge bg-label-secondary" id="animation-status-badge">Prêt</span>
+  <button class="btn btn-danger btn-sm" id="animation-start-btn" type="button"><i class="bx bx-radio-circle-marked me-1"></i data-i18n="board.tool.start">Démarrer</button>
+  <button class="btn btn-outline-secondary btn-sm" id="animation-stop-btn" type="button" disabled><i class="bx bx-stop-circle me-1"></i data-i18n="board.tool.stop">Terminer</button>
+  <button class="btn btn-outline-primary btn-sm" id="animation-preview-btn" type="button" disabled><i class="bx bx-play-circle me-1"></i data-i18n="board.tool.preview">Preview</button>
+  <button class="btn btn-outline-dark btn-sm" id="animation-reset-btn" type="button" disabled><i class="bx bx-reset me-1"></i data-i18n="board.tool.reset">Reset</button>
+  <button class="btn btn-outline-success btn-sm" id="animation-export-gif-btn" type="button" disabled><i class="bx bx-film me-1"></i data-i18n="board.export_webm">Exporter WebM</button>
+  <span class="badge bg-label-secondary" id="animation-status-badge" data-i18n="board.ready">Prêt</span>
   <span class="text-muted small" id="animation-help-text">Astuce: clique sur Start, bouge les joueuses/ballon sur le terrain, puis termine pour générer la vidéo.</span>
+
+<div id="mobile-board-actions-bar" class="mobile-board-actions-bar d-md-none" aria-label="Board quick actions"></div>
+
 </div>
+<div id="mobile-board-actions-bar" class="mobile-board-actions-bar"></div>
+
 <div class="board-layout d-flex gap-3 flex-column flex-lg-row">
                     <div class="board-toolbar-col">
                       <div class="board-sidebar board-toolbar h-100 collapsed" id="board-toolbar">
                         <div class="d-flex justify-content-between align-items-center mb-2 board-toolbar-head">
-                          <div class="small text-uppercase text-muted fw-semibold board-toolbar-title">Outils</div>
+                          <div class="small text-uppercase text-muted fw-semibold board-toolbar-title" data-i18n="board.tools">Outils</div>
                           <button class="btn btn-sm btn-icon btn-outline-secondary" id="toolbar-toggle-btn" type="button" title="Agrandir/réduire">
                             <i class="bx bx-chevrons-right"></i>
                           </button>
                         </div>
                         <div class="d-grid gap-2 mb-3" id="tool-buttons">
-                          <button class="btn btn-outline-primary board-tool-btn active" data-tool="select" type="button" title="Sélection"><i class="bx bx-pointer"></i><span class="tool-label">Sélection</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="pan" type="button" title="Déplacer la vue"><i class="bx bx-move"></i><span class="tool-label">Déplacer</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="offense" type="button" title="Joueuse attaque"><i class="bx bx-circle"></i><span class="tool-label">Attaque</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="defense" type="button" title="Joueuse défense"><i class="bx bx-x-circle"></i><span class="tool-label">Défense</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="ball" type="button" title="Ballon football américain"><span class="board-ball-icon" aria-hidden="true">🏈</span><span class="tool-label">Ballon</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="text" type="button" title="Texte"><i class="bx bx-text"></i><span class="tool-label">Texte</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="line" type="button" title="Ligne"><i class="bx bx-minus"></i><span class="tool-label">Ligne</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="arrow" type="button" title="Flèche droite"><i class="bx bx-right-arrow-alt"></i><span class="tool-label">Flèche</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="curved-arrow" type="button" title="Flèche courbe"><i class="bx bx-trending-up"></i><span class="tool-label">Courbe</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="pass-arrow" type="button" title="Flèche passe"><i class="bx bx-transfer-alt"></i><span class="tool-label">Passe</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="zone" type="button" title="Zone rouge"><i class="bx bx-shape-square"></i><span class="tool-label">Zone</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="path" type="button" title="Trajet joueuse"><i class="bx bx-git-branch"></i><span class="tool-label">Path</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn active" data-tool="select" title="Sélection" data-short-label="Sel" type="button" title="Sélection"><i class="bx bx-pointer"></i><span class="tool-label" data-i18n="board.tool.select">Sélection</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="offense" title="Offense" data-short-label="Off" type="button" title="Joueuse attaque"><i class="bx bx-circle"></i><span class="tool-label" data-i18n="board.tool.offense">Attaque</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="defense" title="Défense" data-short-label="Def" type="button" title="Joueuse défense"><i class="bx bx-x-circle"></i><span class="tool-label" data-i18n="board.tool.defense">Défense</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="ball" title="Ballon" data-short-label="Ball" type="button" title="Ballon football américain"><span class="board-ball-icon" aria-hidden="true">🏈</span><span class="tool-label" data-i18n="board.tool.ball">Ballon</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="text" title="Texte" data-short-label="Text" type="button" title="Texte"><i class="bx bx-text"></i><span class="tool-label" data-i18n="board.tool.text">Texte</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="line" title="Ligne" data-short-label="Line" type="button" title="Ligne"><i class="bx bx-minus"></i><span class="tool-label" data-i18n="board.tool.line">Ligne</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="arrow" title="Flèche" data-short-label="Arrow" type="button" title="Flèche droite"><i class="bx bx-right-arrow-alt"></i><span class="tool-label" data-i18n="board.tool.arrow">Flèche</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="curved-arrow" title="Courbe" data-short-label="Curve" type="button" title="Flèche courbe"><i class="bx bx-trending-up"></i><span class="tool-label" data-i18n="board.tool.curved">Courbe</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="pass-arrow" title="Passe" data-short-label="Pass" type="button" title="Flèche passe"><i class="bx bx-transfer-alt"></i><span class="tool-label" data-i18n="board.tool.pass">Passe</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="zone" title="Zone rouge" data-short-label="Zone" type="button" title="Zone rouge"><i class="bx bx-shape-square"></i><span class="tool-label" data-i18n="board.tool.zone">Zone</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="path" title="Path: sélectionner une joueuse puis tracer le trajet" data-short-label="Path" type="button" title="Trajet joueuse"><i class="bx bx-git-branch"></i><span class="tool-label" data-i18n="board.tool.path">Path</span></button>
+
+                          <button id="terrain-orientation-btn" class="btn btn-outline-primary board-tool-btn board-toolbar-action" type="button" title="Basculer terrain horizontal / vertical" data-short-label="Terrain">
+                            <i class="bx bx-refresh"></i><span class="tool-label" data-i18n="board.tool.terrain">Terrain</span>
+                          </button>
+
+                          <div class="board-toolbar-divider"></div>
+                          <button id="toolbar-duplicate-btn" class="btn btn-outline-info board-tool-btn board-toolbar-action" type="button" title="Dupliquer" data-short-label="Dup">
+                            <i class="bx bx-duplicate"></i><span class="tool-label" data-i18n="board.duplicate">Duplicate</span>
+                          </button>
+                          <button id="toolbar-copy-btn" class="btn btn-outline-primary board-tool-btn board-toolbar-action" type="button" title="Copier" data-short-label="Copy">
+                            <i class="bx bx-copy"></i><span class="tool-label" data-i18n="board.copy">Copy</span>
+                          </button>
+                          <button id="toolbar-paste-btn" class="btn btn-outline-success board-tool-btn board-toolbar-action" type="button" title="Coller" data-short-label="Paste">
+                            <i class="bx bx-paste"></i><span class="tool-label" data-i18n="board.paste">Paste</span>
+                          </button>
+                          <button id="toolbar-delete-btn" class="btn btn-outline-danger board-tool-btn board-toolbar-action" type="button" title="Supprimer" data-short-label="Delete">
+                            <i class="bx bx-trash"></i><span class="tool-label" data-i18n="board.delete">Delete</span>
+                          </button>
+
                         </div>
-                        <div id="board-path-hint" class="small text-muted mb-3">Path: sélectionner une joueuse, choisir <strong>Path</strong>, puis cliquer sur le terrain pour tracer un trajet.</div>
-                        <div class="small text-uppercase text-muted fw-semibold mb-2 board-toolbar-title">Templates</div>
+                                                <div class="small text-uppercase text-muted fw-semibold mb-2 board-toolbar-title" data-i18n="board.templates">Templates</div>
                         <div class="d-grid gap-2 mb-3 board-quick-actions">
-                          <button class="btn btn-outline-primary board-quick-btn" id="template-offense-btn" type="button" title="Template Offense"><i class="bx bx-shield-quarter"></i><span class="tool-label">Offense</span></button>
-                          <button class="btn btn-outline-danger board-quick-btn" id="template-defense-btn" type="button" title="Template Defense"><i class="bx bx-shield-x"></i><span class="tool-label">Defense</span></button>
-                          <button class="btn btn-outline-warning board-quick-btn" id="template-special-btn" type="button" title="Template Special Teams"><i class="bx bx-star"></i><span class="tool-label">Special</span></button>
+                          <button class="btn btn-outline-primary board-quick-btn" id="template-offense-btn" type="button" title="Template Offense"><i class="bx bx-shield-quarter"></i><span class="tool-label" data-i18n="board.templates.offense">Offense</span></button>
+                          <button class="btn btn-outline-danger board-quick-btn" id="template-defense-btn" type="button" title="Template Defense"><i class="bx bx-shield-x"></i><span class="tool-label" data-i18n="board.templates.defense">Defense</span></button>
+                          <button class="btn btn-outline-warning board-quick-btn" id="template-special-btn" type="button" title="Template Special Teams"><i class="bx bx-star"></i><span class="tool-label" data-i18n="board.templates.special">Special</span></button>
                         </div>
                       </div>
                     </div>
@@ -251,13 +271,8 @@
                         <div class="presentation-bar d-none" id="presentation-bar">
                           <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="badge bg-label-light text-dark" id="presentation-title">Tactical Board</span>
-                            <button class="btn btn-sm btn-light" id="presentation-laser-btn" type="button"><i class="bx bx-radio-circle-marked me-1"></i>Laser</button>
-                            <button class="btn btn-sm btn-light" id="presentation-zoom-out-btn" type="button"><i class="bx bx-minus"></i></button>
                             <span class="badge bg-label-primary d-inline-flex align-items-center justify-content-center" id="presentation-zoom-badge">100%</span>
-                            <button class="btn btn-sm btn-light" id="presentation-zoom-in-btn" type="button"><i class="bx bx-plus"></i></button>
-                            <button class="btn btn-sm btn-light" id="presentation-zoom-reset-btn" type="button"><i class="bx bx-reset"></i></button>
                           </div>
-                          <button class="btn btn-sm btn-danger" id="presentation-exit-btn" type="button"><i class="bx bx-x me-1"></i>Quitter</button>
                         </div>
                         <div class="presentation-laser d-none" id="presentation-laser"></div>
                         <div class="presentation-stage d-none" id="presentation-stage">
@@ -277,48 +292,33 @@
                     </div>
                     <div class="board-props-col">
                       <div class="board-sidebar board-properties-sidebar h-100 is-empty" id="board-properties-sidebar">
-                        <div class="small text-uppercase text-muted fw-semibold mb-2">Élément sélectionné</div>
-                        <div id="object-empty-state" class="text-muted small mb-3">Sélectionne un élément pour modifier son label ou sa couleur.</div>
+                        <div class="small text-uppercase text-muted fw-semibold mb-2" data-i18n="board.selected">Élément sélectionné</div>
+                        <div id="object-empty-state" class="text-muted small mb-3" data-i18n="board.empty_selection">Sélectionne un élément pour modifier son label ou sa couleur.</div>
                         <div id="object-properties" class="d-none">
                           <div class="mb-3">
-                            <label class="form-label">Label</label>
+                            <label class="form-label" data-i18n="board.label">Label</label>
                             <input type="text" class="form-control" id="prop-label" placeholder="Ex: WR / Cover 2" />
                           </div>
                           <div class="mb-3">
-                            <label class="form-label">Couleur</label>
+                            <label class="form-label" data-i18n="board.color">Couleur</label>
                             <input type="color" class="form-control form-control-color w-100" id="prop-color" value="#696cff" />
                           </div>
                           <div class="mb-3">
                             <div class="d-flex align-items-center justify-content-between mb-1">
-                              <label class="form-label mb-0">Taille police</label>
+                              <label class="form-label mb-0" data-i18n="board.font_size">Taille police</label>
                               <span class="board-range-value" id="prop-fontsize-value">16</span>
                             </div>
                             <input type="range" min="10" max="36" value="16" class="form-range board-range" id="prop-fontsize" />
                           </div>
                           <div class="mb-0">
                             <div class="d-flex align-items-center justify-content-between mb-1">
-                              <label class="form-label mb-0">Épaisseur</label>
+                              <label class="form-label mb-0" data-i18n="board.stroke">Épaisseur</label>
                               <span class="board-range-value" id="prop-stroke-value">3</span>
                             </div>
                             <input type="range" min="1" max="10" value="3" class="form-range board-range" id="prop-stroke" />
                           </div>
                         </div>
                         <hr>
-                        <div class="small text-uppercase text-muted fw-semibold mb-2">Actions rapides</div>
-                        <div class="d-grid gap-2 mb-3 board-side-actions">
-                          <button class="btn btn-outline-info board-side-btn" id="duplicate-selected-btn" type="button" title="Dupliquer sélection"><i class="bx bx-copy me-1"></i>Dupliquer</button>
-                          <button class="btn btn-outline-primary board-side-btn" id="copy-selected-btn" type="button" title="Copier sélection"><i class="bx bx-copy-alt me-1"></i>Copier</button>
-                          <button class="btn btn-outline-success board-side-btn" id="paste-selected-btn" type="button" title="Coller"><i class="bx bx-paste me-1"></i>Coller</button>
-                          <button class="btn btn-outline-danger board-side-btn" id="delete-selected-btn" type="button" title="Supprimer sélection"><i class="bx bx-trash me-1"></i>Supprimer</button>
-                          <a class="btn btn-outline-secondary board-side-btn" id="open-tactic-btn" href="tactic-detail.html" title="Voir la tactique"><i class="bx bx-link-external me-1"></i>Ouvrir tactique</a>
-                        </div>
-                        <hr>
-                        <div class="small text-uppercase text-muted fw-semibold mb-2">Conseils</div>
-                        <ul class="small text-muted ps-3 mb-0 board-tips">
-                          <li>PC / tablette: glisse-dépose pour bouger les éléments.</li>
-                          <li>Flèche / ligne / zone: clique et glisse sur le terrain.</li>
-                          <li>Mobile: tu peux consulter, bouger et exporter; le dessin complexe est plus confortable sur tablette/PC.</li>
-                        </ul>
                       </div>
                     </div>
                   </div>
