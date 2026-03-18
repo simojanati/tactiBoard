@@ -13,8 +13,9 @@ import {
 } from './common.js';
 import { canEdit, getUserContext } from './auth.js';
 import { notifyTeamEvent } from './notification-helpers.js';
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
-setAppTitle('Tactiques');
+setAppTitle(tt('page.tactics', 'Tactiques'));
 activateMenu('tactics');
 
 const tbody = document.getElementById('tactics-table');
@@ -22,7 +23,7 @@ const teamSelect = document.getElementById('team-select');
 const form = document.getElementById('tactic-form');
 const idInput = document.getElementById('entity-id');
 const submitLabel = document.getElementById('submit-label');
-const panel = initCrudPanel({ addTitle: 'Ajouter une tactique', editTitle: 'Modifier tactique' });
+const panel = initCrudPanel({ addTitle: tt('tactics.add','Ajouter une tactique'), editTitle: tt('tactics.edit','Modifier tactique') });
 const assignmentsContainer = document.getElementById('assignments-builder');
 const addAssignmentBtn = document.getElementById('add-assignment-btn');
 const ctx = await getUserContext();
@@ -39,7 +40,7 @@ async function uploadDiagram(file) {
 
   if (error) {
     if (String(error.message || '').toLowerCase().includes('row-level security')) {
-      throw new Error('Upload bloqué par Supabase Storage. Ajoute une policy INSERT sur storage.objects pour le bucket tactic-images.');
+      throw new Error(tt('tactics.upload_policy_error', 'Upload bloqué par Supabase Storage. Ajoute une policy INSERT sur storage.objects pour le bucket tactic-images.'));
     }
     throw error;
   }
@@ -49,7 +50,7 @@ async function uploadDiagram(file) {
 }
 
 async function loadRows() {
-  tbody.innerHTML = `<tr><td colspan="9" class="table-empty">Chargement...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="9" class="table-empty">${tt('tactics.loading','Chargement...')}</td></tr>`;
   const { data, error } = await supabase
     .from('tactics')
     .select('id,title,phase,formation,version,diagram_image_url,team_id,category,objective,notes,coach_notes,change_note,updated_at,teams(name)')
@@ -58,7 +59,7 @@ async function loadRows() {
   if (error) throw error;
 
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="table-empty">Aucune tactique pour le moment.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="table-empty">${tt('tactics.none','Aucune tactique pour le moment.')}</td></tr>`;
     return;
   }
 
@@ -72,10 +73,10 @@ async function loadRows() {
         <td>${escapeHtml(row.formation || '')}</td>
         <td>${escapeHtml(row.version ?? '')}</td>
         <td><div class="small">${row.updated_at ? escapeHtml(new Date(row.updated_at).toLocaleDateString()) : '—'}</div><div class="small text-muted">${escapeHtml(row.change_note || '—')}</div></td>
-        <td>${row.diagram_image_url ? `<a href=\"${row.diagram_image_url}\" target=\"_blank\" class=\"btn btn-sm btn-outline-primary\">Voir</a>` : '—'}</td>
+        <td>${row.diagram_image_url ? `<a href=\"${row.diagram_image_url}\" target=\"_blank\" class=\"btn btn-sm btn-outline-primary\">${tt('tactics.view','Voir')}</a>` : '—'}</td>
         <td class="text-end actions-cell">
-          <a class="btn btn-sm btn-outline-secondary" href="tactic-detail.html?id=${row.id}">Détail</a>
-          ${isEditor ? `<a class="btn btn-sm btn-outline-dark" href="tactical-board.html?id=${row.id}">Board</a>
+          <a class="btn btn-sm btn-outline-secondary" href="tactic-detail.html?id=${row.id}">${tt('tactics.detail','Détail')}</a>
+          ${isEditor ? `<a class="btn btn-sm btn-outline-dark" href="tactical-board.html?id=${row.id}">${tt('tactics.board','Board')}</a>
           <button class="btn btn-sm btn-outline-primary edit-btn" data-id="${row.id}">Modifier</button>
           <button class="btn btn-sm btn-outline-danger delete-btn" data-id="${row.id}" data-label="${escapeHtml(row.title || '')}">Supprimer</button>` : ''}
         </td>
@@ -204,3 +205,5 @@ if (isEditor) bindFormSubmit('tactic-form', async fd => {
 });
 
 if (!isEditor) { panel.close(false); }
+
+document.addEventListener('app:language-changed', () => { try { location.reload(); } catch (e) { console.warn(e); } });

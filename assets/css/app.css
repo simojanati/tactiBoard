@@ -1157,3 +1157,81 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
     max-width:280px !important;
   }
 }
+
+
+/* mobile table to cards */
+@media (max-width: 767.98px) {
+  .table-responsive {
+    overflow-x: visible !important;
+  }
+
+  table.responsive-card-table {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+  }
+
+  table.responsive-card-table thead {
+    display: none !important;
+  }
+
+  table.responsive-card-table tbody,
+  table.responsive-card-table tr,
+  table.responsive-card-table td {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  table.responsive-card-table tbody tr {
+    background: #fff;
+    border: 1px solid rgba(67, 89, 113, .12);
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(67, 89, 113, .08);
+    padding: .65rem .85rem;
+    margin-bottom: .85rem;
+  }
+
+  table.responsive-card-table tbody td {
+    border: 0 !important;
+    padding: .45rem 0 !important;
+    text-align: left !important;
+    white-space: normal !important;
+  }
+
+  table.responsive-card-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: .72rem;
+    font-weight: 700;
+    color: #8592a3;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    margin-bottom: .18rem;
+  }
+
+  table.responsive-card-table tbody td:empty {
+    display: none !important;
+  }
+
+  table.responsive-card-table tbody td.actions-cell,
+  table.responsive-card-table tbody td.text-end.actions-cell {
+    padding-top: .7rem !important;
+    margin-top: .35rem;
+    border-top: 1px solid rgba(67, 89, 113, .10) !important;
+  }
+
+  table.responsive-card-table tbody td.actions-cell::before,
+  table.responsive-card-table tbody td.text-end.actions-cell::before {
+    margin-bottom: .45rem;
+  }
+
+  table.responsive-card-table tbody td.actions-cell .btn,
+  table.responsive-card-table tbody td.text-end.actions-cell .btn {
+    margin: 0 .35rem .35rem 0 !important;
+  }
+
+  table.responsive-card-table tbody td .tag-list {
+    justify-content: flex-start !important;
+  }
+}

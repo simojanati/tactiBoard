@@ -1,8 +1,8 @@
 import { activateMenu, escapeHtml, setAppTitle, supabase } from './common.js';
 import { getPortalContext, renderPortalEmpty } from './portal-common.js';
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
-setAppTitle('Mes quiz');
-const tt = (k, f='') => window.t ? window.t(k, f) : f;
+setAppTitle(tt('page.my_quizzes', 'Mes quiz'));
 activateMenu('my-quizzes');
 const host = document.getElementById('portal-content');
 const titleEl = document.getElementById('portal-title');
@@ -42,10 +42,10 @@ if (!ctx.teamId) {
           <h5 class="mb-0">${escapeHtml(item.title || '')}</h5>
           <span class="badge bg-label-info">${item.quiz_questions?.length || 0} questions</span>
         </div>
-        <div class="small text-muted mb-2">${escapeHtml(item.tactics?.title || 'Quiz général d’équipe')}</div>
+        <div class="small text-muted mb-2">${escapeHtml(item.tactics?.title || tt('my_quizzes.general_team_quiz','Quiz général d’équipe'))}</div>
         <p class="text-muted flex-grow-1 mb-3">${escapeHtml(item.description || tt('quiz.no_description', 'Aucune description.'))}</p>
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="badge bg-label-${latest ? (isPerfect ? 'success' : scorePct >= 70 ? 'warning' : 'danger') : 'secondary'}">${latest ? `Dernier score: ${latest.score}/${latest.total_questions}` : tt('quiz.never_taken', 'Jamais passé')}</span>
+          <span class="badge bg-label-${latest ? (isPerfect ? 'success' : scorePct >= 70 ? 'warning' : 'danger') : 'secondary'}">${latest ? `${tt('my_quizzes.last_score','Dernier score')}: ${latest.score}/${latest.total_questions}` : tt('quiz.never_taken', 'Jamais passé')}</span>
           ${latest ? `<small class="text-muted">${scorePct}%</small>` : ''}
         </div>
         <div class="small text-muted mb-3">${window.t ? window.t('misc.attempts', 'Attempts') : 'Attempts'}: ${attemptsCount}</div>
@@ -54,3 +54,5 @@ if (!ctx.teamId) {
     }).join('')}</div>`;
   }
 }
+
+document.addEventListener('app:language-changed', () => { try { location.reload(); } catch (e) { console.warn(e); } });

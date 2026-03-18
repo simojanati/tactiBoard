@@ -1,7 +1,7 @@
 import { activateMenu, bindFormSubmit, escapeHtml, fetchTacticsOptions, fetchTeamsOptions, initCrudPanel, setAppTitle, showAlert, supabase } from './common.js';
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
-setAppTitle('Quizzes');
-const tt = (k, f='') => window.t ? window.t(k, f) : f;
+setAppTitle(tt('page.quizzes', 'Quizzes'));
 activateMenu('quizzes');
 
 const tableBody = document.getElementById('quizzes-table');

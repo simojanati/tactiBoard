@@ -1,12 +1,12 @@
 import { activateMenu, dashboardCounts, setAppTitle, showAlert, supabase } from './common.js';
 import { getPortalContext, fetchTeamBundle, cardMetric, buildReadState } from './portal-common.js';
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
 setAppTitle(tt('page.dashboard', 'Dashboard'));
 activateMenu('dashboard');
 document.getElementById('project-url').textContent = window.APP_CONFIG.supabaseUrl;
 document.getElementById('bucket-name').textContent = window.APP_CONFIG.defaultBucket;
 
-const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 const ctx = await getPortalContext();
 const heroTitle = document.querySelector('.app-hero-card .card-title');
 const heroText = document.querySelector('.app-hero-card p');
@@ -107,7 +107,7 @@ if (ctx.role === 'admin') {
     connectionCard.querySelector('.card-body').innerHTML = `
       <div class="small-muted mb-2"><strong>Email</strong></div>
       <div class="small-muted">${ctx.user?.email || '—'}</div>
-      <div class="small-muted mb-2 mt-3"><strong>Équipe liée</strong></div>
+      <div class="small-muted mb-2 mt-3"><strong>${tt('dashboard.linked_team','Équipe liée')}</strong></div>
       <div class="small-muted">${ctx.teamName || 'Aucune liaison'}</div>`;
   }
 }
@@ -120,3 +120,5 @@ async function getRecentUpdates(teamId) {
     .order('updated_at', { ascending: false })
     .limit(5);
 }
+
+document.addEventListener('app:language-changed', () => { try { location.reload(); } catch (e) { console.warn(e); } });

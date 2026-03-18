@@ -231,3 +231,67 @@ export async function syncLinkedAvatar({ table, rowId, profileId, imageUrl, prof
   const failed = results.find(item => item.error);
   if (failed?.error) throw failed.error;
 }
+
+
+function getResponsiveTableHeaders(table) {
+  const headers = [...table.querySelectorAll('thead th')].map(th => (th.textContent || '').trim());
+  if (headers.length) return headers;
+  const firstRow = table.querySelector('tr');
+  if (!firstRow) return [];
+  return [...firstRow.children].map(cell => (cell.textContent || '').trim());
+}
+
+function markResponsiveTable(table) {
+  if (!table || table.dataset.responsiveCardsReady === '1') return;
+  const headers = getResponsiveTableHeaders(table);
+  const bodyRows = [...table.querySelectorAll('tbody tr')];
+  bodyRows.forEach(row => {
+    const cells = [...row.children];
+    cells.forEach((cell, index) => {
+      if (!(cell instanceof HTMLElement)) return;
+      const label = headers[index] || '';
+      if (!cell.hasAttribute('data-label')) cell.setAttribute('data-label', label);
+    });
+  });
+  table.classList.add('responsive-card-table');
+  table.dataset.responsiveCardsReady = '1';
+}
+
+export function applyResponsiveDataCards(root = document) {
+  const tables = [...root.querySelectorAll('table.table, table[data-responsive-cards], .table-responsive table')];
+  tables.forEach(table => {
+    if (table.closest('.keep-table-desktop-only')) return;
+    markResponsiveTable(table);
+  });
+}
+
+export function initResponsiveDataCards() {
+  const run = () => applyResponsiveDataCards(document);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run, { once: true });
+  } else {
+    run();
+  }
+
+  const observer = new MutationObserver(() => {
+    applyResponsiveDataCards(document);
+  });
+  const startObserve = () => {
+    if (!document.body) return;
+    observer.observe(document.body, { childList: true, subtree: true });
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startObserve, { once: true });
+  } else {
+    startObserve();
+  }
+
+  document.addEventListener('app:language-changed', () => {
+    document.querySelectorAll('table.responsive-card-table').forEach(table => {
+      table.dataset.responsiveCardsReady = '';
+    });
+    applyResponsiveDataCards(document);
+  });
+}
+
+initResponsiveDataCards();
