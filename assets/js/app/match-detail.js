@@ -1,6 +1,7 @@
 
 import { activateMenu, escapeHtml, formatDate, getQueryParam, nl2br, setAppTitle, showAlert, supabase } from './common.js';
 import { canEdit, requireAuthForPage } from './auth.js';
+import { notifyTeamEvent } from './notification-helpers.js';
 const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
 setAppTitle('Détail match');
@@ -520,6 +521,30 @@ saveGamePlanBtn?.addEventListener('click', async () => {
       }
     }
     await loadMatchGamePlanSection();
+
+    try {
+      const { data: notifyMatchRow, error: notifyMatchErr } = await supabase
+        .from('matches')
+        .select('id,team_id,opponent')
+        .eq('id', matchId)
+        .single();
+      if (notifyMatchErr) throw notifyMatchErr;
+
+      await notifyTeamEvent({
+        teamId: notifyMatchRow?.team_id,
+        eventType: 'match',
+        title: tt('match.gameplan_updated_title', 'Game plan mis à jour'),
+        body: tt('match.gameplan_updated_body', 'Le game plan du match contre {opponent} a été mis à jour.')
+          .replace('{opponent}', notifyMatchRow?.opponent || '—'),
+        links: {
+          player: 'my-matches.html',
+          coach: `match-detail.html?id=${matchId}`
+        }
+      });
+    } catch (notifyErr) {
+      console.warn('Game plan notification failed:', notifyErr);
+    }
+
     showAlert(tt('match.gameplan_saved', 'Game plan sauvegardé.'), 'success');
   } catch (err) {
     console.error(err);

@@ -105,6 +105,52 @@
           <script type="module" src="../assets/js/app/tactic-detail.js"></script>
         </div>
         
+          
+          <div class="card mt-4" id="tactic-questions-card">
+            <div class="card-header">
+              <h5 class="mb-0" data-i18n="tactic.questions_title">Questions privées</h5>
+              <small class="text-muted" data-i18n="tactic.questions_subtitle">Chaque joueuse voit uniquement ses propres échanges.</small>
+            </div>
+            <div class="card-body">
+              <div id="tactic-questions-alert" class="mb-3"></div>
+
+              <div id="tactic-questions-player-wrap" class="d-none">
+                <form id="tactic-question-form" class="mb-4">
+                  <label class="form-label" for="tactic-question-input" data-i18n="tactic.ask_question">Poser une question</label>
+                  <textarea id="tactic-question-input" class="form-control" rows="3" data-i18n-placeholder="tactic.ask_placeholder" placeholder="Explique ce que tu n'as pas compris..."></textarea>
+                  <div class="mt-3 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary" id="tactic-question-submit" data-i18n="tactic.send_question">Envoyer la question</button>
+                  </div>
+                </form>
+                <div id="tactic-questions-list">Chargement...</div>
+              </div>
+
+              <div id="tactic-questions-staff-wrap" class="d-none">
+                <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+                  <div>
+                    <div class="fw-semibold" data-i18n="tactic.staff_questions_title">Questions des joueuses</div>
+                    <div class="text-muted small" id="tactic-questions-staff-summary">—</div>
+                  </div>
+                  <button type="button" class="btn btn-outline-primary" id="tactic-questions-open-modal" data-bs-toggle="modal" data-bs-target="#tacticQuestionsModal" data-i18n="tactic.open_questions_popup">Ouvrir les questions</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal fade" id="tacticQuestionsModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" data-i18n="tactic.questions_popup_title">Questions privées</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div id="tactic-questions-modal-list">Chargement...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="card mt-4" id="diagrams-card">
             <div class="card-header"><h5 class="mb-0" data-i18n="tactic.linked_diagrams">Diagrammes liés</h5></div>
             <div class="card-body" id="diagrams-list">Chargement...</div>

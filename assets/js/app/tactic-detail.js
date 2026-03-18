@@ -13,7 +13,16 @@ const linkedQuizzesHost = document.getElementById('linked-quizzes');
 const linkedReadStatusHost = document.getElementById('linked-read-status');
 const quizzesManageLink = document.getElementById('quizzes-manage-link');
 const diagramsListHost = document.getElementById('diagrams-list');
+const tacticQuestionsListHost = document.getElementById('tactic-questions-list');
+const tacticQuestionForm = document.getElementById('tactic-question-form');
+const tacticQuestionInput = document.getElementById('tactic-question-input');
+const tacticQuestionSubmit = document.getElementById('tactic-question-submit');
+const tacticQuestionsPlayerWrap = document.getElementById('tactic-questions-player-wrap');
+const tacticQuestionsStaffWrap = document.getElementById('tactic-questions-staff-wrap');
+const tacticQuestionsStaffSummary = document.getElementById('tactic-questions-staff-summary');
+const tacticQuestionsModalList = document.getElementById('tactic-questions-modal-list');
 const ctx = await getPortalContext();
+let currentTactic = null;
 
 function parseDiagramPayload(diagramJson) {
   if (!diagramJson) return null;
@@ -263,6 +272,139 @@ function renderList(hostEl, items, formatter, emptyLabel) {
   hostEl.innerHTML = items?.length ? items.map(formatter).join('') : `<li class="list-group-item text-muted">${emptyLabel}</li>`;
 }
 
+
+
+function questionAlert(message, type = 'warning') {
+  const host = document.getElementById('tactic-questions-alert');
+  if (!host) return;
+  host.innerHTML = `<div class="alert alert-${type} mb-0">${escapeHtml(message)}</div>`;
+}
+
+function clearQuestionAlert() {
+  const host = document.getElementById('tactic-questions-alert');
+  if (host) host.innerHTML = '';
+}
+
+function renderPlayerQuestionThreads(items = []) {
+  if (!tacticQuestionsListHost) return;
+  if (!items.length) {
+    tacticQuestionsListHost.innerHTML = `<div class="text-muted">${tt('tactic.no_questions_player', 'Aucune question pour le moment. Utilise le formulaire ci-dessus si quelque chose n\'est pas clair.')}</div>`;
+    return;
+  }
+
+  tacticQuestionsListHost.innerHTML = items.map(item => `
+    <div class="tactic-question-thread mb-3">
+      <div class="tactic-question-bubble player">
+        <div class="tactic-question-meta">${tt('tactic.question_from_player', 'Question de la joueuse')} · ${new Date(item.created_at).toLocaleString()}</div>
+        <div>${escapeHtml(item.question_text || '')}</div>
+      </div>
+      ${item.answer_text ? `
+        <div class="tactic-question-bubble staff mb-0">
+          <div class="tactic-question-meta">${tt('tactic.answer_from_staff', 'Réponse coach/admin')} · ${new Date(item.updated_at || item.created_at).toLocaleString()}</div>
+          <div>${escapeHtml(item.answer_text || '')}</div>
+        </div>
+      ` : `<div class="small text-muted mb-0">${tt('tactic.answer_waiting', 'En attente de réponse.')}</div>`}
+    </div>
+  `).join('');
+}
+
+function renderStaffQuestionThreads(items = []) {
+  if (!tacticQuestionsModalList || !tacticQuestionsStaffSummary) return;
+  tacticQuestionsStaffSummary.textContent = items.length
+    ? tt('tactic.staff_questions_summary_count', '{count} question(s) en attente ou déjà traitée(s).').replace('{count}', items.length)
+    : tt('tactic.staff_questions_summary_empty', 'Aucune question pour le moment.');
+
+  if (!items.length) {
+    tacticQuestionsModalList.innerHTML = `<div class="text-muted">${tt('tactic.no_questions_staff', 'Aucune question de joueuse pour cette tactique pour le moment.')}</div>`;
+    return;
+  }
+
+  tacticQuestionsModalList.innerHTML = items.map(item => {
+    const canReply = !item.answer_text;
+    return `
+      <div class="tactic-question-thread mb-3">
+        <div class="tactic-question-bubble player">
+          <div class="tactic-question-meta">${tt('tactic.question_from_player', 'Question de la joueuse')} · ${new Date(item.created_at).toLocaleString()}</div>
+          <div>${escapeHtml(item.question_text || '')}</div>
+        </div>
+        ${item.answer_text ? `
+          <div class="tactic-question-bubble staff mb-0">
+            <div class="tactic-question-meta">${tt('tactic.answer_from_staff', 'Réponse coach/admin')} · ${new Date(item.updated_at || item.created_at).toLocaleString()}</div>
+            <div>${escapeHtml(item.answer_text || '')}</div>
+          </div>
+        ` : `
+          <form class="tactic-answer-form mt-3" data-question-id="${item.id}">
+            <label class="form-label">${tt('tactic.answer_label', 'Réponse privée')}</label>
+            <textarea class="form-control tactic-answer-input" rows="3" placeholder="${tt('tactic.reply_placeholder', 'Écrire une réponse privée...')}"></textarea>
+            <div class="mt-3 d-flex justify-content-end">
+              <button type="submit" class="btn btn-sm btn-primary">${tt('tactic.send_reply', 'Envoyer la réponse')}</button>
+            </div>
+          </form>
+        `}
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadTacticQuestions() {
+  if (!currentTactic?.id) return;
+  clearQuestionAlert();
+
+  if (ctx.role === 'player') {
+    if (tacticQuestionsPlayerWrap) tacticQuestionsPlayerWrap.classList.remove('d-none');
+    if (tacticQuestionsStaffWrap) tacticQuestionsStaffWrap.classList.add('d-none');
+    if (tacticQuestionsListHost) tacticQuestionsListHost.innerHTML = `<div class="text-muted">${tt('common.loading', 'Chargement...')}</div>`;
+
+    const { data, error } = await supabase
+      .from('tactic_questions')
+      .select('id,tactic_id,team_id,player_profile_id,question_text,answer_text,answer_by_profile_id,created_at,updated_at')
+      .eq('tactic_id', currentTactic.id)
+      .eq('player_profile_id', ctx.user?.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      const message = String(error.message || '');
+      if (message.includes('relation')) {
+        questionAlert(tt('tactic.setup_needed', 'La table tactic_questions n\'existe pas encore. Lance le script SQL fourni.'), 'warning');
+        if (tacticQuestionsListHost) tacticQuestionsListHost.innerHTML = '';
+        return;
+      }
+      questionAlert(tt('tactic.questions_load_failed', 'Impossible de charger les questions privées.'), 'danger');
+      if (tacticQuestionsListHost) tacticQuestionsListHost.innerHTML = '';
+      return;
+    }
+
+    renderPlayerQuestionThreads(data || []);
+    return;
+  }
+
+  if (tacticQuestionsPlayerWrap) tacticQuestionsPlayerWrap.classList.add('d-none');
+  if (tacticQuestionsStaffWrap) tacticQuestionsStaffWrap.classList.remove('d-none');
+  if (tacticQuestionsModalList) tacticQuestionsModalList.innerHTML = `<div class="text-muted">${tt('common.loading', 'Chargement...')}</div>`;
+
+  const { data, error } = await supabase
+    .from('tactic_questions')
+    .select('id,tactic_id,team_id,player_profile_id,question_text,answer_text,answer_by_profile_id,created_at,updated_at')
+    .eq('tactic_id', currentTactic.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    const message = String(error.message || '');
+    if (message.includes('relation')) {
+      questionAlert(tt('tactic.setup_needed', 'La table tactic_questions n\'existe pas encore. Lance le script SQL fourni.'), 'warning');
+      if (tacticQuestionsModalList) tacticQuestionsModalList.innerHTML = '';
+      if (tacticQuestionsStaffSummary) tacticQuestionsStaffSummary.textContent = '';
+      return;
+    }
+    questionAlert(tt('tactic.questions_load_failed', 'Impossible de charger les questions privées.'), 'danger');
+    if (tacticQuestionsModalList) tacticQuestionsModalList.innerHTML = '';
+    if (tacticQuestionsStaffSummary) tacticQuestionsStaffSummary.textContent = '';
+    return;
+  }
+
+  renderStaffQuestionThreads(data || []);
+}
+
 if (!id) {
   showAlert(tt('tactic.no_id', 'Identifiant de tactique manquant.'), 'danger');
   host.innerHTML = `<div class="card"><div class="card-body">${tt('tactic.none_selected', 'Aucune tactique sélectionnée.')}</div></div>`;
@@ -286,6 +428,7 @@ if (!id) {
     if (readsErr && !String(readsErr.message || '').includes('relation')) throw readsErr;
     if (diagramsErr && !String(diagramsErr.message || '').includes('relation')) throw diagramsErr;
 
+    currentTactic = tactic;
     const myAssignments = ctx.role === 'player' ? matchAssignmentsForPlayer(assignments || [], ctx.membership) : [];
     const playerReadEntry = ctx.role === 'player' ? (reads || []).find(item => item.profile_id === ctx.user?.id) : null;
     const playerReadState = ctx.role === 'player' ? buildReadState(tactic, playerReadEntry) : null;
@@ -489,6 +632,7 @@ if (!id) {
       }
     }
 
+    await loadTacticQuestions();
   } catch (err) {
     console.error(err);
     showAlert(err.message || tt('tactic.load_failed', 'Impossible de charger la tactique.'), 'danger');
@@ -1005,4 +1149,66 @@ document.addEventListener('app:language-changed', () => {
   } catch (e) {
     console.warn(e);
   }
+});
+
+
+tacticQuestionForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (ctx.role !== 'player' || !currentTactic?.id || !ctx.user?.id) return;
+  const questionText = tacticQuestionInput?.value?.trim() || '';
+  if (!questionText) return;
+  if (tacticQuestionSubmit) tacticQuestionSubmit.disabled = true;
+  clearQuestionAlert();
+  try {
+    const { error } = await supabase.from('tactic_questions').insert({
+      tactic_id: currentTactic.id,
+      team_id: currentTactic.team_id || null,
+      player_profile_id: ctx.user.id,
+      question_text: questionText
+    });
+    if (error) throw error;
+    if (tacticQuestionInput) tacticQuestionInput.value = '';
+    questionAlert(tt('tactic.question_sent', 'Question envoyée.'), 'success');
+    await loadTacticQuestions();
+  } catch (err) {
+    const message = String(err?.message || '');
+    if (message.includes('relation')) {
+      questionAlert(tt('tactic.setup_needed', 'La table tactic_questions n\'existe pas encore. Lance le script SQL fourni.'), 'warning');
+    } else {
+      questionAlert(err.message || tt('tactic.questions_load_failed', 'Impossible de charger les questions privées.'), 'danger');
+    }
+  } finally {
+    if (tacticQuestionSubmit) tacticQuestionSubmit.disabled = false;
+  }
+});
+
+tacticQuestionsModalList?.addEventListener('submit', async (e) => {
+  const form = e.target.closest('.tactic-answer-form');
+  if (!form) return;
+  e.preventDefault();
+  const questionId = form.dataset.questionId;
+  const answerInput = form.querySelector('.tactic-answer-input');
+  const answerText = answerInput?.value?.trim() || '';
+  if (!questionId || !answerText || !['admin', 'coach'].includes(ctx.role)) return;
+  clearQuestionAlert();
+  try {
+    const { error } = await supabase.from('tactic_questions').update({
+      answer_text: answerText,
+      answer_by_profile_id: ctx.user?.id || null
+    }).eq('id', questionId);
+    if (error) throw error;
+    questionAlert(tt('tactic.answer_sent', 'Réponse envoyée.'), 'success');
+    await loadTacticQuestions();
+  } catch (err) {
+    const message = String(err?.message || '');
+    if (message.includes('relation')) {
+      questionAlert(tt('tactic.setup_needed', 'La table tactic_questions n\'existe pas encore. Lance le script SQL fourni.'), 'warning');
+    } else {
+      questionAlert(err.message || tt('tactic.questions_load_failed', 'Impossible de charger les questions privées.'), 'danger');
+    }
+  }
+});
+
+document.addEventListener('app:language-changed', () => {
+  try { loadTacticQuestions().catch(console.error); } catch (e) { console.warn(e); }
 });

@@ -1235,3 +1235,11 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
     justify-content: flex-start !important;
   }
 }
+
+
+/* tactic private questions */
+.tactic-question-thread{border:1px solid rgba(67,89,113,.12);border-radius:18px;padding:1rem;background:#fff;box-shadow:0 4px 14px rgba(67,89,113,.06)}
+.tactic-question-bubble{border-radius:16px;padding:.85rem 1rem;margin-bottom:.75rem}
+.tactic-question-bubble.player{background:rgba(105,108,255,.10)}
+.tactic-question-bubble.staff{background:rgba(3,195,236,.10)}
+.tactic-question-meta{font-size:.78rem;color:#8592a3;margin-bottom:.35rem}

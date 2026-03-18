@@ -85,17 +85,17 @@
 <div class="row">
   <div class="col-12 mb-4" id="admin-notify-panel" style="display:none;">
     <div class="card">
-      <div class="card-header"><h5 class="mb-0">Envoyer une notification test</h5></div>
+      <div class="card-header"><h5 class="mb-0" data-i18n="notifications.send_test">Envoyer une notification test</h5></div>
       <div class="card-body">
         <form id="notify-form">
           <div class="row">
-            <div class="col-md-3 mb-3"><label class="form-label">Destinataire</label><select class="form-select" id="notify-profile" name="profile_id" required></select></div>
-            <div class="col-md-3 mb-3"><label class="form-label">Type</label><select class="form-select" name="type"><option value="update">Update</option><option value="quiz">Quiz</option><option value="session">Séance</option><option value="match">Match</option><option value="info">Info</option></select></div>
-            <div class="col-md-6 mb-3"><label class="form-label">Titre</label><input class="form-control" type="text" name="title" required /></div>
-            <div class="col-md-8 mb-3"><label class="form-label">Message</label><textarea class="form-control" name="body" rows="2" required></textarea></div>
-            <div class="col-md-4 mb-3"><label class="form-label">Lien (optionnel)</label><input class="form-control" type="text" name="link_url" placeholder="Ex: tactic-detail.html?id=1" /></div>
+            <div class="col-md-3 mb-3"><label class="form-label" data-i18n="notifications.recipient">Destinataire</label><select class="form-select" id="notify-profile" name="profile_id" required></select></div>
+            <div class="col-md-3 mb-3"><label class="form-label" data-i18n="notifications.type">Type</label><select class="form-select" name="type"><option value="update" data-i18n="notifications.update">Update</option><option value="quiz" data-i18n="common.quiz">Quiz</option><option value="session" data-i18n="common.session">Séance</option><option value="match" data-i18n="common.match">Match</option><option value="info" data-i18n="notifications.info">Info</option></select></div>
+            <div class="col-md-6 mb-3"><label class="form-label" data-i18n="notifications.title">Titre</label><input class="form-control" type="text" name="title" required /></div>
+            <div class="col-md-8 mb-3"><label class="form-label" data-i18n="notifications.message">Message</label><textarea class="form-control" name="body" rows="2" required></textarea></div>
+            <div class="col-md-4 mb-3"><label class="form-label" data-i18n="notifications.link_optional">Lien (optionnel)</label><select class="form-select" id="notify-link" name="link_url"><option value="" data-i18n="notifications.no_link">Aucun lien</option></select><input type="hidden" id="notify-link-label" name="link_label" /><input type="hidden" id="notify-link-type" name="link_type" /></div>
           </div>
-          <button class="btn btn-primary" type="submit">Envoyer</button>
+          <button class="btn btn-primary" type="submit" data-i18n="notifications.send">Envoyer</button>
         </form>
       </div>
     </div>
