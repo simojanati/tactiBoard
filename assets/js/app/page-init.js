@@ -1,5 +1,5 @@
 
-import { ROLE_LABELS, canAdmin, canEdit, firstAllowedPage, getUserContext, readCachedAuth, requireAuthForPage, signOut } from './auth.js';
+import { ROLE_LABELS, canAdmin, canEdit, firstAllowedPage, getUserContext, readCachedAuth, requireAuthForPage, signOut, supabase } from './auth.js';
 import { applyTranslations, initI18n, setLanguage, t, getLanguage } from './i18n.js';
 
 await initI18n();
@@ -21,8 +21,9 @@ const MENU_ITEMS = [
   { page: 'tactical-board', href: 'tactical-board.html', icon: 'bx-pen', label: t('nav.tactical_board') },
   { page: 'quizzes', href: 'quizzes.html', icon: 'bx-help-circle', label: t('nav.quizzes') },
   { page: 'sessions', href: 'sessions.html', icon: 'bx-calendar', label: t('nav.sessions') },
-  { page: 'matches', href: 'matches.html', icon: 'bx-trophy', label: t('nav.matches') }
-];
+  { page: 'matches', href: 'matches.html', icon: 'bx-trophy', label: t('nav.matches') },
+  { page: 'my-tickets', href: 'my-tickets.html', icon: 'bx-message-square-detail', label: t('nav.my_tickets') },
+  { page: 'tickets', href: 'tickets.html', icon: 'bx-support', label: t('nav.tickets') },];
 
 function normalizeMenu() {
   const menu = document.querySelector('.menu-inner');
@@ -44,6 +45,43 @@ function normalizeMenu() {
   });
 }
 
+
+
+function updateMenuBadge(page, value) {
+  const link = document.querySelector(`[data-menu-page="${page}"]`);
+  if (!link) return;
+  let badge = link.querySelector('.menu-badge');
+  const count = Number(value || 0);
+  if (!count) {
+    badge?.remove();
+    return;
+  }
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'badge rounded-pill bg-danger ms-auto menu-badge';
+    link.appendChild(badge);
+  }
+  badge.textContent = String(count);
+  badge.title = window.t ? window.t('tickets.badge_open', 'Tickets ouverts') : 'Open tickets';
+  badge.setAttribute('aria-label', badge.title);
+}
+
+async function refreshTicketMenuBadge(ctx) {
+  try {
+    if (ctx?.role !== 'admin') {
+      updateMenuBadge('tickets', 0);
+      return;
+    }
+    const { count, error } = await supabase
+      .from('support_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'open');
+    if (error) throw error;
+    updateMenuBadge('tickets', count || 0);
+  } catch (e) {
+    console.warn('Ticket badge failed:', e);
+  }
+}
 function hideMenuByRole(role) {
 
   
@@ -64,6 +102,9 @@ const rules = {
     'my-quizzes.html': ['player'],
     'take-quiz.html': ['player'],
     'notifications.html': ['admin', 'coach', 'player'],
+    'my-tickets.html': ['coach', 'player'],
+    'tickets.html': ['admin'],
+    'ticket-detail.html': ['admin', 'coach', 'player'],
     'profile.html': ['admin', 'coach', 'player'],
     'index.html': ['admin', 'coach', 'player']
   };
@@ -200,6 +241,7 @@ if (cachedAuth?.role) {
   const ctx = await requireAuthForPage();
   if (!ctx) return;
   hideMenuByRole(ctx.role);
+  await refreshTicketMenuBadge(ctx);
   applyCrudVisibility(ctx.role);
   await injectNotificationsBell(ctx);
   injectUserBox(ctx);

@@ -31,7 +31,10 @@ export const ROLE_PAGE_RULES = {
   'my-quizzes.html': ['player'],
   'take-quiz.html': ['player'],
   'notifications.html': ['admin','coach','player'],
-  'profile.html': ['admin','coach','player']
+  'profile.html': ['admin','coach','player'],
+  'my-tickets.html': ['coach','player'],
+  'tickets.html': ['admin'],
+  'ticket-detail.html': ['admin','coach','player']
 };
 
 let cachedContext = null;

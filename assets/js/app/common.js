@@ -295,3 +295,236 @@ export function initResponsiveDataCards() {
 }
 
 initResponsiveDataCards();
+
+
+export function stripHtml(html = '') {
+  const div = document.createElement('div');
+  div.innerHTML = String(html || '');
+  return (div.textContent || div.innerText || '').trim();
+}
+
+
+export function initRichTextEditor(textarea, { placeholder = '', minHeight = 180 } = {}) {
+  if (!textarea || textarea.dataset.richReady === '1') return null;
+  textarea.dataset.richReady = '1';
+
+  const api = {
+    getHTML: () => textarea.value || '',
+    setHTML: (html = '') => { textarea.value = html; },
+    clear: () => { textarea.value = ''; },
+    ready: Promise.resolve()
+  };
+
+  if (window.CKEDITOR?.ClassicEditor) {
+    textarea.style.display = 'none';
+    const host = document.createElement('div');
+    host.className = 'rich-editor-wrap';
+    textarea.parentNode.insertBefore(host, textarea.nextSibling);
+
+    function Base64UploadAdapterPlugin(editor) {
+      editor.plugins.get('FileRepository').createUploadAdapter = (loader) => ({
+        upload: async () => {
+          const file = await loader.file;
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          return { default: dataUrl };
+        },
+        abort() {}
+      });
+    }
+
+    api.ready = window.CKEDITOR.ClassicEditor
+      .create(host, {
+        extraPlugins: [Base64UploadAdapterPlugin],
+        toolbar: [
+          'heading',
+          '|',
+          'fontSize',
+          'fontColor',
+          'fontBackgroundColor',
+          '|',
+          'bold',
+          'italic',
+          'underline',
+          '|',
+          'link',
+          'bulletedList',
+          'numberedList',
+          '|',
+          'insertTable',
+          'uploadImage',
+          'blockQuote',
+          '|',
+          'undo',
+          'redo'
+        ],
+        image: {
+          toolbar: [
+            'imageTextAlternative',
+            'toggleImageCaption',
+            'imageStyle:inline',
+            'imageStyle:block',
+            'imageStyle:side'
+          ]
+        },
+        table: {
+          contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
+        }
+      })
+      .then(editor => {
+        editor.editing.view.change(writer => {
+          writer.setStyle('min-height', `${minHeight}px`, editor.editing.view.document.getRoot());
+        });
+        editor.setData(textarea.value || '');
+        editor.model.document.on('change:data', () => {
+          textarea.value = editor.getData();
+        });
+        api.getHTML = () => editor.getData();
+        api.setHTML = (html = '') => { editor.setData(html); textarea.value = html; };
+        api.clear = () => { editor.setData(''); textarea.value = ''; };
+        api.editor = editor;
+        return editor;
+      })
+      .catch(err => {
+        console.warn('CKEditor init failed, fallback editor used:', err);
+      });
+
+    return api;
+  }
+
+  textarea.style.display = 'none';
+  const wrap = document.createElement('div');
+  wrap.className = 'rich-editor-wrap';
+  const toolbar = document.createElement('div');
+  toolbar.className = 'rich-editor-toolbar';
+  const editor = document.createElement('div');
+  editor.className = 'rich-editor';
+  editor.contentEditable = 'true';
+  editor.dataset.placeholder = placeholder || '';
+  editor.style.minHeight = `${minHeight}px`;
+  editor.innerHTML = textarea.value || '';
+
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.style.display = 'none';
+
+  const buttons = [
+    ['bold','bx-bold', tt('tickets.editor_bold','Gras')],
+    ['italic','bx-italic', tt('tickets.editor_italic','Italique')],
+    ['underline','bx-underline', tt('tickets.editor_underline','Souligné')],
+    ['insertUnorderedList','bx-list-ul', tt('tickets.editor_bullets','Liste')],
+    ['insertOrderedList','bx-list-ol', tt('tickets.editor_numbers','Numéros')],
+  ];
+
+  buttons.forEach(([cmd, icon, label]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-sm btn-outline-secondary';
+    btn.title = label;
+    btn.innerHTML = `<i class="bx ${icon}"></i>`;
+    btn.addEventListener('click', () => {
+      editor.focus();
+      document.execCommand(cmd, false);
+      sync();
+    });
+    toolbar.appendChild(btn);
+  });
+
+  const fontSizeSelect = document.createElement('select');
+  fontSizeSelect.className = 'form-select form-select-sm';
+  fontSizeSelect.style.width = 'auto';
+  fontSizeSelect.innerHTML = '<option value="">A</option><option value="2">12</option><option value="3">16</option><option value="5">24</option><option value="6">32</option>';
+  fontSizeSelect.addEventListener('change', () => {
+    if (!fontSizeSelect.value) return;
+    editor.focus();
+    document.execCommand('fontSize', false, fontSizeSelect.value);
+    sync();
+  });
+  toolbar.appendChild(fontSizeSelect);
+
+  const linkBtn = document.createElement('button');
+  linkBtn.type = 'button';
+  linkBtn.className = 'btn btn-sm btn-outline-secondary';
+  linkBtn.title = tt('tickets.editor_link', 'Lien');
+  linkBtn.innerHTML = '<i class="bx bx-link"></i>';
+  linkBtn.addEventListener('click', () => {
+    const url = prompt(tt('tickets.editor_link', 'Lien'));
+    if (!url) return;
+    editor.focus();
+    document.execCommand('createLink', false, url);
+    sync();
+  });
+  toolbar.appendChild(linkBtn);
+
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.className = 'form-control form-control-color';
+  colorInput.title = tt('tickets.editor_color', 'Couleur');
+  colorInput.addEventListener('input', () => {
+    editor.focus();
+    document.execCommand('foreColor', false, colorInput.value);
+    sync();
+  });
+  toolbar.appendChild(colorInput);
+
+  const tableBtn = document.createElement('button');
+  tableBtn.type = 'button';
+  tableBtn.className = 'btn btn-sm btn-outline-secondary';
+  tableBtn.title = tt('tickets.editor_table', 'Tableau');
+  tableBtn.innerHTML = '<i class="bx bx-table"></i>';
+  tableBtn.addEventListener('click', () => {
+    const rows = Math.max(1, Number(prompt('Rows', '2') || 2));
+    const cols = Math.max(1, Number(prompt('Cols', '2') || 2));
+    const table = `<table border="1" style="width:100%;border-collapse:collapse;">${Array.from({ length: rows }).map(() => `<tr>${Array.from({ length: cols }).map(() => '<td style="padding:6px;">&nbsp;</td>').join('')}</tr>`).join('')}</table><p></p>`;
+    editor.focus();
+    document.execCommand('insertHTML', false, table);
+    sync();
+  });
+  toolbar.appendChild(tableBtn);
+
+  const imageBtn = document.createElement('button');
+  imageBtn.type = 'button';
+  imageBtn.className = 'btn btn-sm btn-outline-secondary';
+  imageBtn.title = tt('tickets.editor_image', 'Image');
+  imageBtn.innerHTML = '<i class="bx bx-image-add"></i>';
+  imageBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const width = prompt('Image width %', '75') || '75';
+      editor.focus();
+      document.execCommand('insertHTML', false, `<p><img src="${reader.result}" alt="image" style="max-width:${width}%;width:${width}%;height:auto;"></p>`);
+      sync();
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+  toolbar.appendChild(imageBtn);
+
+  wrap.appendChild(toolbar);
+  wrap.appendChild(editor);
+  wrap.appendChild(fileInput);
+  textarea.parentNode.insertBefore(wrap, textarea.nextSibling);
+
+  function sync() {
+    textarea.value = editor.innerHTML.trim();
+  }
+
+  editor.addEventListener('input', sync);
+  editor.addEventListener('blur', sync);
+  sync();
+
+  api.getHTML = () => editor.innerHTML.trim();
+  api.setHTML = (html = '') => { editor.innerHTML = html; sync(); };
+  api.clear = () => { editor.innerHTML = ''; sync(); };
+  api.editor = editor;
+  return api;
+}
+
