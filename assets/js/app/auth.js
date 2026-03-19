@@ -81,7 +81,7 @@ export async function getUserContext(force = false) {
   let profile = null;
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, email, role, avatar_url, is_active, approved_at, approved_by_profile_id')
+    .select('id, full_name, email, role, avatar_url, is_active, approved_at, approved_by_profile_id, requested_team_id')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -98,7 +98,8 @@ export async function getUserContext(force = false) {
       avatar_url: null,
       is_active: false,
       approved_at: null,
-      approved_by_profile_id: null
+      approved_by_profile_id: null,
+      requested_team_id: user.user_metadata?.team_id || null
     };
   }
 
@@ -173,13 +174,13 @@ export async function signInWithPassword(email, password) {
 }
 
 
-export async function signUpWithPassword({ email, password, fullName, role }) {
+export async function signUpWithPassword({ email, password, fullName, role, teamId }) {
   const safeRole = role === 'admin' ? 'player' : role;
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { full_name: fullName, role: safeRole }
+      data: { full_name: fullName, role: safeRole, team_id: teamId ? Number(teamId) : null }
     }
   });
   if (error) throw error;

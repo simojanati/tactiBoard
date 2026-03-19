@@ -1,6 +1,6 @@
 
 import { firstAllowedPage, getSession, signInWithPassword, signUpWithPassword } from './auth.js';
-import { clearAlert, showAlert } from './common.js';
+import { clearAlert, fetchTeamsOptions, showAlert } from './common.js';
 import { initI18n, t, setLanguage } from './i18n.js';
 
 await initI18n();
@@ -10,6 +10,7 @@ const signUpForm = document.getElementById('register-form');
 const toggleBtns = document.querySelectorAll('[data-auth-tab]');
 const loginPane = document.getElementById('login-pane');
 const registerPane = document.getElementById('register-pane');
+const registerTeamSelect = document.getElementById('register-team-select');
 
 async function redirectIfLoggedIn() {
   const session = await getSession();
@@ -64,7 +65,8 @@ signUpForm?.addEventListener('submit', async e => {
     fullName: fd.get('full_name'),
     email: fd.get('email'),
     password: fd.get('password'),
-    role: fd.get('role')
+    role: fd.get('role'),
+    teamId: fd.get('team_id') || null
   };
   const btn = signUpForm.querySelector('[type="submit"]');
   const original = btn?.innerHTML;
@@ -96,3 +98,8 @@ signUpForm?.addEventListener('submit', async e => {
 redirectIfLoggedIn();
 
 (function injectLoginLanguageSwitcher(){ const box=document.createElement('div'); box.className='position-fixed top-0 end-0 p-3'; box.innerHTML=`<select class="form-select form-select-sm" style="width:88px"><option value="fr" ${localStorage.getItem('tactiboard_lang')==='en'?'':'selected'}>${t('lang.fr')}</option><option value="en" ${localStorage.getItem('tactiboard_lang')==='en'?'selected':''}>${t('lang.en')}</option></select>`; box.querySelector('select').addEventListener('change',e=>setLanguage(e.target.value)); document.body.appendChild(box); })();
+
+
+if (registerTeamSelect) {
+  try { await fetchTeamsOptions(registerTeamSelect, true); } catch (e) { console.warn('Unable to load teams for signup', e); }
+}

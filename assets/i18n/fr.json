@@ -745,5 +745,9 @@
   "users.approval_mail_body": "Bonjour {name},%0A%0ATon inscription TactiBoard a été validée.%0ATu peux maintenant te connecter ici : {link}%0A%0ABien cordialement.",
   "notifications.signup_title": "Nouvelle inscription en attente",
   "notifications.signup_body": "Un nouvel utilisateur “{name}” attend la validation admin.",
-  "login.disable_email_confirmation_note": "Important : désactive aussi la confirmation email dans Supabase Auth > Providers > Email."
+  "login.disable_email_confirmation_note": "Important : désactive aussi la confirmation email dans Supabase Auth > Providers > Email.",
+  "login.team": "Équipe",
+  "login.choose_team": "Choisir une équipe",
+  "users.team": "Équipe demandée",
+  "users.linked_record_created": "Fiche liée créée automatiquement."
 }

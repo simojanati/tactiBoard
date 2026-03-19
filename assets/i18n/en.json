@@ -745,5 +745,9 @@
   "users.approval_mail_body": "Hello {name},%0A%0AYour TactiBoard registration has been approved.%0AYou can now sign in here: {link}%0A%0ABest regards.",
   "notifications.signup_title": "New pending registration",
   "notifications.signup_body": "A new user “{name}” is waiting for admin approval.",
-  "login.disable_email_confirmation_note": "Important: also disable email confirmation in Supabase Auth > Providers > Email."
+  "login.disable_email_confirmation_note": "Important: also disable email confirmation in Supabase Auth > Providers > Email.",
+  "login.team": "Team",
+  "login.choose_team": "Choose a team",
+  "users.team": "Requested team",
+  "users.linked_record_created": "Linked record created automatically."
 }
