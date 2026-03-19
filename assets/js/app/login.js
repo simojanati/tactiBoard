@@ -74,10 +74,13 @@ signUpForm?.addEventListener('submit', async e => {
     btn.innerHTML = `<span class="btn-loading-center"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span>${t('login.creating','Création...')}</span></span>`;
   }
   try {
+    if (payload.role === 'admin') throw new Error(t('login.role_no_admin','Le rôle admin n\'est pas disponible à l\'inscription.'));
     await signUpWithPassword(payload);
-    showAlert(t('login.created','Compte créé. Tu peux maintenant te connecter.'), 'success');
-    switchTab('login');
-    signInForm.email.value = payload.email;
+    showAlert(t('login.pending_created','Inscription envoyée. Elle sera validée par les admins sous 24h maximum.'), 'success');
+    signUpForm.reset();
+    registerPane.classList.remove('d-none');
+    loginPane.classList.add('d-none');
+    toggleBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.authTab === 'register'));
   } catch (err) {
     console.error(err);
     showAlert(err.message || t('login.create_failed','Création du compte impossible.'), 'danger');

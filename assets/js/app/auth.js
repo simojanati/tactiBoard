@@ -34,7 +34,8 @@ export const ROLE_PAGE_RULES = {
   'profile.html': ['admin','coach','player'],
   'my-tickets.html': ['coach','player'],
   'tickets.html': ['admin'],
-  'ticket-detail.html': ['admin','coach','player']
+  'ticket-detail.html': ['admin','coach','player'],
+  'users.html': ['admin']
 };
 
 let cachedContext = null;
@@ -80,7 +81,7 @@ export async function getUserContext(force = false) {
   let profile = null;
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, email, role, avatar_url')
+    .select('id, full_name, email, role, avatar_url, is_active, approved_at, approved_by_profile_id')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -89,14 +90,16 @@ export async function getUserContext(force = false) {
   }
   profile = data || null;
   if (!profile) {
-    const fallbackName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Utilisateur';
-    const fallbackRole = user.user_metadata?.role || 'player';
-    const { data: inserted, error: insertError } = await supabase
-      .from('profiles')
-      .upsert({ id: user.id, full_name: fallbackName, role: fallbackRole }, { onConflict: 'id' })
-      .select('id, full_name, email, role, avatar_url')
-      .maybeSingle();
-    if (!insertError) profile = inserted;
+    profile = {
+      id: user.id,
+      full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Utilisateur',
+      email: user.email || '',
+      role: user.user_metadata?.role || 'player',
+      avatar_url: null,
+      is_active: false,
+      approved_at: null,
+      approved_by_profile_id: null
+    };
   }
 
   cachedContext = {
@@ -104,7 +107,8 @@ export async function getUserContext(force = false) {
     user,
     profile,
     role: profile?.role || user.user_metadata?.role || 'player',
-    fullName: profile?.full_name || user.user_metadata?.full_name || user.email || 'Utilisateur'
+    fullName: profile?.full_name || user.user_metadata?.full_name || user.email || 'Utilisateur',
+    isActive: profile?.is_active !== false
   };
   saveAuthCache(cachedContext);
   return cachedContext;
@@ -126,6 +130,10 @@ export async function requireAuthForPage() {
     location.href = 'login.html';
     return null;
   }
+  if (file !== 'login.html' && ctx.profile && ctx.profile.is_active === false) {
+    await signOut();
+    return null;
+  }
   const allowed = ROLE_PAGE_RULES[file] || ['admin'];
   if (!allowed.includes(ctx.role)) {
     const first = firstAllowedPage(ctx.role);
@@ -145,35 +153,61 @@ export function firstAllowedPage(role) {
 export async function signInWithPassword(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  cachedContext = null;
+  const ctx = await getUserContext(true);
+  if (ctx?.profile && ctx.profile.is_active === false) {
+    await supabase.auth.signOut();
+    clearAuthCache();
+    cachedContext = null;
+    throw new Error(window.t ? window.t('login.pending_signin_blocked', 'Ton inscription est en attente de validation par les admins.') : 'Account pending admin approval.');
+  }
   const user = data?.user || data?.session?.user || null;
   if (user) {
     saveAuthCache({
-      role: user.user_metadata?.role || 'player',
-      fullName: user.user_metadata?.full_name || user.email || 'Utilisateur',
+      role: ctx?.role || user.user_metadata?.role || 'player',
+      fullName: ctx?.fullName || user.user_metadata?.full_name || user.email || 'Utilisateur',
       user
     });
   }
-  cachedContext = null;
   return data;
 }
 
+
 export async function signUpWithPassword({ email, password, fullName, role }) {
-  const path = location.pathname || '/';
-  const basePath = path.includes('/pages/') ? path.split('/pages/')[0] : path.replace(/[^/]*$/, '');
-  const redirectBase = `${location.origin}${basePath.endsWith('/') ? basePath : `${basePath}/`}`;
+  const safeRole = role === 'admin' ? 'player' : role;
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: `${redirectBase}pages/login.html`,
-      data: { full_name: fullName, role }
+      data: { full_name: fullName, role: safeRole }
     }
   });
   if (error) throw error;
+
+  const hasSession = !!(data?.session?.user || data?.user?.aud === 'authenticated');
+
+  if (hasSession) {
+    try {
+      const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
+      const rows = (admins || []).map(admin => ({
+        profile_id: admin.id,
+        type: 'update',
+        title: window.t ? window.t('notifications.signup_title', 'Nouvelle inscription en attente') : 'New pending registration',
+        body: (window.t ? window.t('notifications.signup_body', 'Un nouvel utilisateur “{name}” attend la validation admin.') : 'New pending registration').replace('{name}', fullName || email),
+        link_url: 'users.html'
+      }));
+      if (rows.length) await supabase.from('notifications').insert(rows);
+    } catch (e) {
+      console.warn('Signup admin notification failed:', e);
+    }
+  }
+
+  await supabase.auth.signOut();
   cachedContext = null;
   clearAuthCache();
   return data;
 }
+
 
 export async function signOut() {
   await supabase.auth.signOut();
