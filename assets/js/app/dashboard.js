@@ -84,6 +84,7 @@ if (ctx.role === 'admin') {
       pageContainer.insertAdjacentHTML('beforeend', `<div class="row"><div class="col-12 mb-4"><div class="card"><div class="card-header"><h5 class="mb-0">Tactiques à relire</h5></div><ul class="list-group list-group-flush">${myReviewRows}</ul></div></div></div>`);
     }
   }
+
   if (quickStartCard) {
     quickStartCard.querySelector('.card-header h5').textContent = 'Accès rapide';
     quickStartCard.querySelector('.card-body').innerHTML = ctx.role === 'coach'
@@ -109,6 +110,18 @@ if (ctx.role === 'admin') {
       <div class="small-muted">${ctx.user?.email || '—'}</div>
       <div class="small-muted mb-2 mt-3"><strong>${tt('dashboard.linked_team','Équipe liée')}</strong></div>
       <div class="small-muted">${ctx.teamName || 'Aucune liaison'}</div>`;
+  }
+
+  if (ctx.role === 'player' && ctx.teamId) {
+    const rolesCardHtml = bundle.team?.roles_pdf_url
+      ? `<div class="row" id="dashboard-team-roles-row"><div class="col-12 mb-4"><div class="card border-warning"><div class="card-body bg-warning-subtle d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3"><div><div class="d-inline-flex align-items-center gap-2 px-2 py-1 rounded bg-label-warning text-warning fw-semibold small mb-2"><i class="bx bx-error-circle"></i><span>${tt('dashboard.roles.badge', 'Important')}</span></div><h5 class="mb-1">${tt('dashboard.roles.title', "Rôles de l'équipe")}</h5><div class="small text-muted">${tt('dashboard.roles.available', 'Le document PDF des rôles est disponible pour ton équipe.')}</div></div><a class="btn btn-warning" href="${bundle.team.roles_pdf_url}" target="_blank" rel="noopener" download="${bundle.team.roles_pdf_filename || 'roles.pdf'}"><i class="bx bxs-file-pdf me-2"></i>${tt('dashboard.roles.download', 'Télécharger')}</a></div></div></div></div>`
+      : `<div class="row" id="dashboard-team-roles-row"><div class="col-12 mb-4"><div class="card border-warning"><div class="card-body bg-warning-subtle d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3"><div><div class="d-inline-flex align-items-center gap-2 px-2 py-1 rounded bg-label-warning text-warning fw-semibold small mb-2"><i class="bx bx-error-circle"></i><span>${tt('dashboard.roles.badge', 'Important')}</span></div><h5 class="mb-1">${tt('dashboard.roles.title', "Rôles de l'équipe")}</h5><div class="small text-muted">${tt('dashboard.roles.missing', "Aucun document de rôles n'a encore été ajouté pour ton équipe.")}</div></div><span class="badge bg-label-warning text-warning">${tt('dashboard.roles.none', 'Aucun rôle')}</span></div></div></div></div>`;
+    const accountRow = connectionCard?.closest('.row');
+    if (accountRow) {
+      accountRow.insertAdjacentHTML('afterend', rolesCardHtml);
+    } else {
+      pageContainer.insertAdjacentHTML('beforeend', rolesCardHtml);
+    }
   }
 }
 

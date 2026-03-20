@@ -46,7 +46,7 @@
             </a>
           </div>
           <h4 class="mb-2">Connexion & accès</h4>
-          <p class="mb-4">Connecte-toi pour accéder au dashboard selon ton rôle.</p>
+          <p class="mb-4">Connecte-toi avec Supabase pour accéder au dashboard selon ton rôle.</p>
           <div id="page-alert"></div>
           <div class="d-flex gap-2 mb-4">
             <button type="button" class="btn btn-primary active" data-auth-tab="login">Connexion</button>
@@ -55,7 +55,13 @@
           <div id="login-pane">
             <form id="login-form" class="mb-3">
               <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
-              <div class="mb-3 form-password-toggle"><label class="form-label">Mot de passe</label><input type="password" class="form-control" name="password" required></div>
+              <div class="mb-3 form-password-toggle">
+                <label class="form-label">Mot de passe</label>
+                <div class="input-group input-group-merge">
+                  <input type="password" class="form-control password-toggle-input" name="password" required>
+                  <button class="input-group-text password-toggle-btn" type="button" tabindex="-1" aria-label="Afficher le mot de passe"><i class="bx bx-hide"></i></button>
+                </div>
+              </div>
               <button class="btn btn-primary d-grid w-100" type="submit">Se connecter</button>
             </form>
           </div>
@@ -63,12 +69,18 @@
             <form id="register-form" class="mb-3">
               <div class="mb-3"><label class="form-label">Nom complet</label><input type="text" class="form-control" name="full_name" required></div>
               <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" name="email" required></div>
-              <div class="mb-3"><label class="form-label">Mot de passe</label><input type="password" class="form-control" name="password" minlength="6" required></div>
+              <div class="mb-3 form-password-toggle">
+                <label class="form-label">Mot de passe</label>
+                <div class="input-group input-group-merge">
+                  <input type="password" class="form-control password-toggle-input" name="password" minlength="6" required>
+                  <button class="input-group-text password-toggle-btn" type="button" tabindex="-1" aria-label="Afficher le mot de passe"><i class="bx bx-hide"></i></button>
+                </div>
+              </div>
               <div class="mb-3"><label class="form-label">Rôle</label><select class="form-select" name="role"><option value="player">Joueuse</option><option value="coach">Coach</option></select></div><div class="mb-3"><label class="form-label" data-i18n="login.team">Équipe</label><select class="form-select" name="team_id" id="register-team-select"><option value="" data-i18n="login.choose_team">Choisir une équipe</option></select></div><div class="small text-muted mb-3" data-i18n="login.pending_info">Après inscription, un admin validera ton accès sous 24h maximum.</div>
               <button class="btn btn-outline-primary d-grid w-100" type="submit">Créer le compte</button>
             </form>
           </div>
-          <div class="text-center small text-muted">TactiBoard © 2026</div>
+          <div class="text-center small text-muted">Phase C: login, rôles, navigation adaptée.</div>
         </div>
       </div>
     </div>

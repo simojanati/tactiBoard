@@ -612,6 +612,10 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
 #layout-menu .app-brand-logo.demo{display:flex;align-items:center;}
 .userbox-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid rgba(16,35,63,.12);background:#fff;}
 .userbox-toggle{display:flex;align-items:center;}
+.userbox-avatar-wrap,.profile-avatar-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;}
+.profile-avatar-wrap{width:132px;height:132px;}
+.status-dot{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#1ec66b;border:2px solid #fff;box-shadow:0 2px 8px rgba(30,198,107,.35);}
+.status-dot-lg{width:18px;height:18px;border-width:3px;right:6px;bottom:6px;}
 .profile-avatar-lg{width:132px;height:132px;border-radius:50%;object-fit:cover;border:4px solid #eef2f7;background:#fff;box-shadow:0 8px 24px rgba(16,35,63,.08);}
 .profile-info-card{background:#f8fafc;border:1px solid #e8edf5;border-radius:12px;padding:0.85rem 1rem;height:100%;}
 .profile-team-line{min-height:38px;display:flex;align-items:center;}
@@ -1262,3 +1266,9 @@ html[data-user-role="coach"] [href="my-matches.html"]{display:none !important;}
 .ticket-rich-content img{max-width:100%;height:auto;border-radius:10px}
 .ticket-rich-content table{width:100%;border-collapse:collapse}
 .ticket-rich-content table td,.ticket-rich-content table th{border:1px solid rgba(67,89,113,.2);padding:6px}
+
+
+.captain-icon{width:28px;height:28px;object-fit:contain;display:inline-block;vertical-align:middle;user-select:none;-webkit-user-drag:none;}
+.captain-icon-sm{width:24px;height:24px;}
+.captain-icon-lg{width:32px;height:32px;}
+.captain-icon-wrap{display:inline-flex;align-items:center;justify-content:center;min-height:28px;}

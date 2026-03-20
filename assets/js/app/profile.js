@@ -18,10 +18,14 @@ const profileTeamLine = document.getElementById('profile-team-line');
 const profileMemberSince = document.getElementById('profile-member-since');
 const profileForm = document.getElementById('profile-form');
 const avatarForm = document.getElementById('avatar-form');
-const roleDetails = document.getElementById('profile-role-details');
+const profileActiveDot = document.getElementById('profile-active-dot');
 const profileJerseyNumber = document.getElementById('profile-jersey-number');
 const profilePrimaryPosition = document.getElementById('profile-primary-position');
 const profileSecondaryPosition = document.getElementById('profile-secondary-position');
+const profileCaptainRoleDisplay = document.getElementById('profile-captain-role-display');
+const profileAge = document.getElementById('profile-age');
+const profileHeightCm = document.getElementById('profile-height-cm');
+const profileWeightKg = document.getElementById('profile-weight-kg');
 const profileCoachRole = document.getElementById('profile-coach-role');
 const profileCoachEmail = document.getElementById('profile-coach-email');
 
@@ -42,26 +46,19 @@ function teamLogo(url, name='Équipe') {
   return `<img src="${src}" alt="${escapeHtml(name)}" class="team-logo-sm">`;
 }
 
-function renderLinkedDetails() {
-  if (!roleDetails) return;
-  if (!linked) {
-    roleDetails.innerHTML = `<div class="col-12 text-muted">${tt('profile.no_role_info','Aucune information liée au rôle.')}</div>`;
-    return;
-  }
-  if (ctx.role === 'player') {
-    roleDetails.innerHTML = `
-      <div class="col-md-4"><div class="profile-info-card"><div class="small text-muted">${tt('profile.jersey_number','Numéro')}</div><div class="fw-semibold">${escapeHtml(linked.jersey_number || '—')}</div></div></div>
-      <div class="col-md-4"><div class="profile-info-card"><div class="small text-muted">${tt('profile.primary_position','Poste principal')}</div><div class="fw-semibold">${escapeHtml(linked.primary_position || '—')}</div></div></div>
-      <div class="col-md-4"><div class="profile-info-card"><div class="small text-muted">${tt('profile.secondary_position','Poste secondaire')}</div><div class="fw-semibold">${escapeHtml(linked.secondary_position || '—')}</div></div></div>
-      <div class="col-md-4"><div class="profile-info-card"><div class="small text-muted">${tt('profile.status','Statut')}</div><div class="fw-semibold">${escapeHtml(linked.status || 'active')}</div></div></div>`;
-  } else if (ctx.role === 'coach') {
-    roleDetails.innerHTML = `
-      <div class="col-md-4"><div class="profile-info-card"><div class="small text-muted">${tt('profile.coach_role','Fonction coach')}</div><div class="fw-semibold">${escapeHtml(linked.role || 'Coach')}</div></div></div>
-      <div class="col-md-4"><div class="profile-info-card"><div class="small text-muted">${tt('profile.coach_email','Email coach')}</div><div class="fw-semibold">${escapeHtml(linked.email || ctx.user?.email || '—')}</div></div></div>`;
-  } else {
-    roleDetails.innerHTML = `<div class="col-12 text-muted">${tt('profile.admin_scope','Accès administrateur global.')}</div>`;
-  }
+function captainIcon(value, sizeClass = '') {
+  const map = { captain_1: '../assets/img/captains/captaine1.png', captain_2: '../assets/img/captains/captaine2.png', captain_3: '../assets/img/captains/captaine3.png' };
+  const labels = {
+    captain_1: tt('players.captain_1', 'Capitaine 1'),
+    captain_2: tt('players.captain_2', 'Capitaine 2'),
+    captain_3: tt('players.captain_3', 'Capitaine 3')
+  };
+  const src = map[value];
+  if (!src) return '<span class="text-muted">—</span>';
+  const title = labels[value] || '';
+  return `<span class="captain-icon-wrap" title="${escapeHtml(title)}"><img src="${src}" alt="${escapeHtml(title || 'Captain')}" class="captain-icon ${sizeClass}"></span>`;
 }
+
 
 function paintProfile() {
   const p = ctx.profile || {};
@@ -73,6 +70,8 @@ function paintProfile() {
   profileTeamBadge.textContent = team?.name || tt('profile.no_team','Aucune équipe');
   profileEmailBadge.textContent = email;
   profileCreatedAt.textContent = `${tt('profile.account_created','Compte créé')} : ${formatDate(ctx.user?.created_at)}`;
+  const isActive = p.is_active !== false;
+  profileActiveDot?.classList.toggle('d-none', !isActive);
   profileEmail.value = email;
   profileRoleInput.value = ROLE_LABELS[ctx.role] || ctx.role;
   profileMemberSince.value = formatDate(ctx.user?.created_at);
@@ -81,15 +80,18 @@ function paintProfile() {
   if (profileJerseyNumber) profileJerseyNumber.value = linked?.jersey_number ?? '';
   if (profilePrimaryPosition) profilePrimaryPosition.value = linked?.primary_position || '';
   if (profileSecondaryPosition) profileSecondaryPosition.value = linked?.secondary_position || '';
+  if (profileCaptainRoleDisplay) profileCaptainRoleDisplay.innerHTML = captainIcon(linked?.captain_role, 'captain-icon-lg');
+  if (profileAge) profileAge.value = linked?.age ?? '';
+  if (profileHeightCm) profileHeightCm.value = linked?.height_cm ?? '';
+  if (profileWeightKg) profileWeightKg.value = linked?.weight_kg ?? '';
   if (profileCoachRole) profileCoachRole.value = linked?.role || '';
   if (profileCoachEmail) profileCoachEmail.value = linked?.email || ctx.user?.email || '';
   toggleRoleEditFields();
-  renderLinkedDetails();
 }
 
 async function loadLinkedRoleData() {
   if (ctx.role === 'player') {
-    const { data, error } = await supabase.from('players').select('id,profile_id,image_url,full_name,jersey_number,primary_position,secondary_position,status,teams(name,logo_url)').eq('profile_id', ctx.user.id).maybeSingle();
+    const { data, error } = await supabase.from('players').select('id,profile_id,image_url,full_name,jersey_number,primary_position,secondary_position,status,captain_role,age,height_cm,weight_kg,teams(name,logo_url)').eq('profile_id', ctx.user.id).maybeSingle();
     if (error) throw error;
     linked = data || null;
   } else if (ctx.role === 'coach') {
@@ -105,7 +107,7 @@ async function loadLinkedRoleData() {
   ctx = await requireAuthForPage();
   if (!ctx) return;
   try {
-    const { data: profile, error } = await supabase.from('profiles').select('id,full_name,email,role,avatar_url').eq('id', ctx.user.id).maybeSingle();
+    const { data: profile, error } = await supabase.from('profiles').select('id,full_name,email,role,avatar_url,is_active').eq('id', ctx.user.id).maybeSingle();
     if (error) throw error;
     ctx.profile = profile || ctx.profile;
     await loadLinkedRoleData();
@@ -128,7 +130,10 @@ profileForm?.addEventListener('submit', async (e) => {
         full_name,
         jersey_number: profileJerseyNumber?.value?.trim() || null,
         primary_position: profilePrimaryPosition?.value?.trim() || null,
-        secondary_position: profileSecondaryPosition?.value?.trim() || null
+        secondary_position: profileSecondaryPosition?.value?.trim() || null,
+        age: profileAge?.value === '' ? null : Number(profileAge?.value),
+        height_cm: profileHeightCm?.value === '' ? null : Number(profileHeightCm?.value),
+        weight_kg: profileWeightKg?.value === '' ? null : Number(profileWeightKg?.value)
       };
       updates.push(supabase.from('players').update(playerPayload).eq('id', linked.id));
     }
@@ -153,14 +158,20 @@ profileForm?.addEventListener('submit', async (e) => {
       cached.fullName = full_name;
       localStorage.setItem('pbm_auth_cache', JSON.stringify(cached));
     } catch {}
-    const userboxName = document.querySelector('#user-box .fw-semibold');
-    if (userboxName) userboxName.textContent = full_name;
+    const userboxNames = document.querySelectorAll('#user-box .userbox-name');
+    if (userboxNames.length) {
+      const captainHtml = ctx.role === 'player' ? captainIcon(linked?.captain_role, 'captain-icon-sm') : '';
+      userboxNames.forEach(el => { el.innerHTML = `${full_name}${captainHtml}`; });
+    }
     if (linked) {
       linked.full_name = full_name;
       if (ctx.role === 'player') {
         linked.jersey_number = profileJerseyNumber?.value?.trim() || null;
         linked.primary_position = profilePrimaryPosition?.value?.trim() || null;
         linked.secondary_position = profileSecondaryPosition?.value?.trim() || null;
+        linked.age = profileAge?.value === '' ? null : Number(profileAge?.value);
+        linked.height_cm = profileHeightCm?.value === '' ? null : Number(profileHeightCm?.value);
+        linked.weight_kg = profileWeightKg?.value === '' ? null : Number(profileWeightKg?.value);
       }
       if (ctx.role === 'coach') {
         linked.role = profileCoachRole?.value?.trim() || null;

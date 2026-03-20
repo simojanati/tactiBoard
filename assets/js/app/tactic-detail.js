@@ -456,7 +456,7 @@ if (!id) {
         </div>`;
     } else if (primaryDiagramImageUrl) {
       const openImageLabel = tt('tactic.open_image', "Ouvrir l'image");
-            tacticDiagramHtml = `<img src="${primaryDiagramImageUrl}" class="img-fluid rounded border w-100 ${diagramMediaOrientationClassV940(primaryDiagram)}" alt="Diagramme tactique"><div class="mt-3 d-flex flex-wrap gap-2 justify-content-center"><a class="btn btn-outline-primary btn-sm" href="${primaryDiagramImageUrl}" target="_blank">${openImageLabel}</a></div>`;
+            tacticDiagramHtml = `<img src="${primaryDiagramImageUrl}" class="img-fluid rounded border w-100 ${diagramMediaOrientationClassV940(primaryDiagram)}" alt="Diagramme tactique">${ctx.role === 'player' ? '' : `<div class="mt-3 d-flex flex-wrap gap-2 justify-content-center"><a class="btn btn-outline-primary btn-sm" href="${primaryDiagramImageUrl}" target="_blank">${openImageLabel}</a></div>`}`;
     }
 
     document.getElementById('page-title').textContent = tactic.title || tt('page.tactic_detail', 'Détail tactique');
@@ -598,7 +598,7 @@ if (!id) {
           const diagramVideoUrl = getAnimationVideoUrl(payload);
           const mediaHtml = diagramVideoUrl
             ? `<div class="border-bottom bg-dark p-2">
-                 <video id="td-linked-video-${diagram.id}" data-td-timeline="td-linked-${diagram.id}" class="w-100 rounded ${diagramMediaOrientationClassV940(diagram)}" style="display:block;aspect-ratio:16/9;object-fit:cover;background:#0f7c3d;" src="${diagramVideoUrl}" playsinline preload="metadata"></video>
+                 <video id="td-linked-video-${diagram.id}" data-td-timeline="td-linked-${diagram.id}" class="w-100 rounded ${diagramMediaOrientationClassV940(diagram)}" style="display:block;aspect-ratio:16/9;object-fit:cover;background:#0f7c3d;" src="${diagramVideoUrl}" playsinline preload="metadata" controlsList="nodownload noremoteplayback" disablePictureInPicture></video>
                  ${tdTimelineHtml(`td-linked-${diagram.id}`)}
                </div>`
             : (diagram.image_url ? `<img src="${diagram.image_url}" class="card-img-top" alt="${escapeHtml(diagram.title || tt('tactic.diagram', 'Diagramme'))}" style="aspect-ratio:${diagramOrientationFromJsonV940(diagram) === 'vertical' ? '9/16' : '16/9'};object-fit:contain;">` : '');
@@ -618,7 +618,7 @@ if (!id) {
                 <div class="d-flex flex-wrap gap-2">
                   
                   ${['admin','coach'].includes(ctx.role) ? `` : ''}
-                  ${diagram.image_url ? `<a class="btn btn-sm btn-outline-primary" href="${diagram.image_url}" target="_blank">${tt('tactic.image', 'Image')}</a>` : ''}${diagramVideoUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${diagramVideoUrl}" target="_blank">WebM</a>` : ''}
+                  ${ctx.role === 'player' ? '' : `${diagram.image_url ? `<a class="btn btn-sm btn-outline-primary" href="${diagram.image_url}" target="_blank">${tt('tactic.image', 'Image')}</a>` : ''}${diagramVideoUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${diagramVideoUrl}" target="_blank">WebM</a>` : ''}`}
                 </div>
               </div>
             </div>

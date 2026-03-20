@@ -4,5 +4,6 @@ window.APP_CONFIG = {
   supabasePublishableKey: 'sb_publishable_cfqYqpJ8H_vVB2a0u_gK4w_gd0ENPGQ',
   projectName: 'TactiBoard',
   defaultBucket: 'tactic-images',
-  teamLogoBucket: 'team-logos'
+  teamLogoBucket: 'team-logos',
+  teamRolesBucket: 'team-roles'
 };

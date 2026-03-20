@@ -1,6 +1,7 @@
 
 import { ROLE_LABELS, canAdmin, canEdit, firstAllowedPage, getUserContext, readCachedAuth, requireAuthForPage, signOut, supabase } from './auth.js';
 import { applyTranslations, initI18n, setLanguage, t, getLanguage } from './i18n.js';
+import { escapeHtml } from './common.js';
 
 await initI18n();
 
@@ -119,6 +120,54 @@ const rules = {
 }
 
 
+
+function protectPlayerMedia(scope = document) {
+  if ((document.documentElement.dataset.userRole || '').toLowerCase() !== 'player') return;
+  scope.querySelectorAll('video').forEach(video => {
+    video.setAttribute('controlsList', 'nodownload noremoteplayback');
+    video.setAttribute('disablePictureInPicture', 'true');
+    video.setAttribute('oncontextmenu', 'return false;');
+    video.setAttribute('playsinline', 'true');
+    video.addEventListener('contextmenu', e => e.preventDefault());
+    video.addEventListener('dragstart', e => e.preventDefault());
+  });
+  scope.querySelectorAll('img').forEach(img => {
+    img.setAttribute('draggable', 'false');
+    img.setAttribute('oncontextmenu', 'return false;');
+    img.addEventListener('contextmenu', e => e.preventDefault());
+    img.addEventListener('dragstart', e => e.preventDefault());
+  });
+  scope.querySelectorAll('a[target="_blank"], a[href]').forEach(link => {
+    const href = link.getAttribute('href') || '';
+    if (!href || href.startsWith('javascript:')) return;
+    const isImageOrVideo = /\.(png|jpe?g|gif|webp|svg|mp4|webm|mov)(\?|#|$)/i.test(href);
+    const isPublicStorageMedia = /\/storage\/v1\/object\/public\//i.test(href) && /\.(png|jpe?g|gif|webp|svg|mp4|webm|mov)(\?|#|$)/i.test(href);
+    const mediaLike = isImageOrVideo || isPublicStorageMedia;
+    if (!mediaLike) return;
+    link.dataset.originalHref = href;
+    link.removeAttribute('href');
+    link.removeAttribute('target');
+    link.classList.add('disabled');
+    link.setAttribute('aria-disabled', 'true');
+    link.addEventListener('click', e => e.preventDefault());
+  });
+}
+
+function watchPlayerMediaProtection() {
+  if ((document.documentElement.dataset.userRole || '').toLowerCase() !== 'player') return;
+  protectPlayerMedia(document);
+  if (document.body?.dataset?.playerMediaProtected === '1') return;
+  const observer = new MutationObserver(mutations => {
+    for (const mutation of mutations) {
+      mutation.addedNodes.forEach(node => {
+        if (node instanceof Element) protectPlayerMedia(node);
+      });
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  document.body.dataset.playerMediaProtected = '1';
+}
+
 function injectLanguageSwitcher() {
   const navbar = document.getElementById('navbar-collapse');
   if (!navbar || document.getElementById('language-switcher')) return;
@@ -174,26 +223,60 @@ async function injectNotificationsBell(ctx) {
   if (userBox) navbar.insertBefore(box, userBox); else navbar.appendChild(box);
 }
 
-function injectUserBox(ctx) {
+function captainLabel(value) {
+  const map = {
+    captain_1: t('players.captain_1', 'Capitaine 1'),
+    captain_2: t('players.captain_2', 'Capitaine 2'),
+    captain_3: t('players.captain_3', 'Capitaine 3')
+  };
+  return map[value] || '';
+}
+
+function captainIconMarkup(value, sizeClass = 'captain-icon-sm') {
+  const map = { captain_1: '../assets/img/captains/captaine1.png', captain_2: '../assets/img/captains/captaine2.png', captain_3: '../assets/img/captains/captaine3.png' };
+  const src = map[value];
+  if (!src) return '';
+  const title = captainLabel(value);
+  return `<span class="captain-icon-wrap ms-1" title="${escapeHtml(title)}"><img src="${src}" alt="${escapeHtml(title || 'Captain')}" class="captain-icon ${sizeClass}"></span>`;
+}
+
+async function resolveCaptainRoleForUser(ctx) {
+  if (ctx?.role !== 'player' || !ctx?.user?.id) return '';
+  if (ctx.membership?.captain_role) return ctx.membership.captain_role;
+  try {
+    const { data, error } = await supabase.from('players').select('captain_role').eq('profile_id', ctx.user.id).maybeSingle();
+    if (error) throw error;
+    if (data?.captain_role) {
+      ctx.membership = { ...(ctx.membership || {}), captain_role: data.captain_role };
+      return data.captain_role;
+    }
+  } catch (e) {
+    console.warn('Captain role load failed:', e);
+  }
+  return '';
+}
+
+async function injectUserBox(ctx) {
   const navbar = document.getElementById('navbar-collapse');
   if (!navbar || document.getElementById('user-box')) return;
   const host = document.createElement('div');
   host.id = 'user-box';
   host.className = 'ms-auto d-flex align-items-center gap-3';
   const avatar = ctx.profile?.avatar_url || readCachedAuth()?.avatar_url || '../assets/img/branding/avatar-placeholder.png';
+  const captainRole = await resolveCaptainRoleForUser(ctx);
+  const captainIcon = captainIconMarkup(captainRole);
   host.innerHTML = `
-    <div class="text-end d-none d-md-block">
-      <div class="fw-semibold">${ctx.fullName}</div>
-      <small class="text-muted">${t(`role.${ctx.role}`, ROLE_LABELS[ctx.role] || ctx.role)}</small>
-    </div>
-    <div class="dropdown">
+    <div class="dropdown ms-auto">
       <button class="btn btn-outline-primary dropdown-toggle userbox-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-        <img src="${avatar}" alt="${ctx.fullName}" class="userbox-avatar me-2">
+        <span class="userbox-avatar-wrap me-2"><img src="${avatar}" alt="${ctx.fullName}" class="userbox-avatar"><span class="status-dot ${ctx.profile?.is_active === false ? "d-none" : ""}" aria-label="Actif"></span></span>
         <span class="d-none d-sm-inline">${t('common.account')}</span>
       </button>
       <ul class="dropdown-menu dropdown-menu-end">
-        <li><div class="dropdown-item-text fw-semibold">${ctx.fullName}</div></li>
-        <li><span class="dropdown-item-text small text-muted">${ctx.user?.email || ''}</span></li>
+        <li class="px-3 py-2">
+          <div class="userbox-name fw-semibold d-inline-flex align-items-center">${ctx.fullName}${captainIcon}</div>
+          <div class="small text-muted userbox-role">${t(`role.${ctx.role}`, ROLE_LABELS[ctx.role] || ctx.role)}</div>
+          <div class="small text-muted">${ctx.user?.email || ''}</div>
+        </li>
         <li><hr class="dropdown-divider"></li>
         <li><a class="dropdown-item" href="profile.html"><i class="bx bx-user me-2"></i>${t('nav.profile')}</a></li>
         <li><a class="dropdown-item" href="${firstAllowedPage(ctx.role)}"><i class="bx bx-home me-2"></i>${t('common.home')}</a></li>
@@ -237,6 +320,7 @@ if (cachedAuth?.role) {
   hideMenuByRole(cachedAuth.role);
   applyCrudVisibility(cachedAuth.role);
   document.documentElement.dataset.roleReady = '1';
+  if (cachedAuth.role === 'player') watchPlayerMediaProtection();
 }
 
 (async () => {
@@ -246,13 +330,14 @@ if (cachedAuth?.role) {
   await refreshTicketMenuBadge(ctx);
   applyCrudVisibility(ctx.role);
   await injectNotificationsBell(ctx);
-  injectUserBox(ctx);
+  await injectUserBox(ctx);
   injectLanguageSwitcher();
   applyTranslations();
   document.documentElement.dataset.userRole = ctx.role;
   document.documentElement.dataset.roleReady = '1';
   window.APP_USER = ctx;
   syncNavbarPageTitle();
+  watchPlayerMediaProtection();
 })();
 
 document.addEventListener('app:language-changed', () => { normalizeMenu(); hideMenuByRole(document.documentElement.dataset.userRole || readCachedAuth()?.role || 'player'); syncNavbarPageTitle(); applyTranslations(); });

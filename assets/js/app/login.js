@@ -12,6 +12,29 @@ const loginPane = document.getElementById('login-pane');
 const registerPane = document.getElementById('register-pane');
 const registerTeamSelect = document.getElementById('register-team-select');
 
+function initPasswordToggles() {
+  document.querySelectorAll('.form-password-toggle').forEach(group => {
+    const input = group.querySelector('.password-toggle-input');
+    const btn = group.querySelector('.password-toggle-btn');
+    const icon = btn?.querySelector('i');
+    if (!input || !btn) return;
+    const sync = () => {
+      const visible = input.type === 'text';
+      btn.setAttribute('aria-label', visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+      if (icon) icon.className = visible ? 'bx bx-show' : 'bx bx-hide';
+    };
+    btn.addEventListener('click', () => {
+      input.type = input.type === 'password' ? 'text' : 'password';
+      sync();
+      input.focus({ preventScroll: true });
+      const len = input.value?.length || 0;
+      try { input.setSelectionRange(len, len); } catch {}
+    });
+    sync();
+  });
+}
+
+
 async function redirectIfLoggedIn() {
   const session = await getSession();
   if (session?.user) {
@@ -94,6 +117,8 @@ signUpForm?.addEventListener('submit', async e => {
     }
   }
 });
+
+initPasswordToggles();
 
 redirectIfLoggedIn();
 

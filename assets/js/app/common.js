@@ -206,6 +206,28 @@ export function teamLogoHtml(team, className='team-logo-sm') {
 }
 
 
+
+
+export async function uploadTeamRolesPdf(file, teamId) {
+  if (!file) return null;
+  const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+  const safeExt = ext === 'pdf' ? 'pdf' : 'pdf';
+  const path = `team-roles-${teamId}-${Date.now()}.${safeExt}`;
+  const bucket = window.APP_CONFIG.teamRolesBucket || window.APP_CONFIG.defaultBucket || 'team-roles';
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    upsert: true,
+    contentType: 'application/pdf',
+    cacheControl: '3600'
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return {
+    url: data?.publicUrl || null,
+    path,
+    filename: file.name || 'roles.pdf'
+  };
+}
+
 export async function uploadAvatar(file, userId) {
   if (!file) return null;
   const ext = (file.name.split('.').pop() || 'png').toLowerCase();

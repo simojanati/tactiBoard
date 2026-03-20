@@ -569,7 +569,7 @@ function buildMatchDiagramPreviewMediaV943(diagram, videoUrl) {
     ? 'aspect-ratio:9/16;object-fit:contain;background:#0f7c3d;'
     : 'aspect-ratio:16/9;object-fit:contain;background:#0f7c3d;';
   if (videoUrl) {
-    return `<video src="${videoUrl}" class="${mediaClass}" style="${mediaStyle}" autoplay muted loop playsinline controls></video>`;
+    return `<video src="${videoUrl}" class="${mediaClass}" style="${mediaStyle}" autoplay muted loop playsinline controls controlsList="nodownload noremoteplayback" disablePictureInPicture></video>`;
   }
   return `<img src="${diagram?.image_url || ''}" class="${mediaClass}" style="${mediaStyle}" alt="${escapeHtml(diagram?.title || tt('tactic.diagram','Diagramme'))}">`;
 }
