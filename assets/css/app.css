@@ -2105,3 +2105,43 @@ html.dark-style #sidebar-collapse-toggle.is-collapsed {
   #notifications-bell{margin-right:0;}
   .theme-switcher-wrap,.language-switcher-wrap{margin-right:0;}
 }
+
+/* mobile responsive-card-table dark mode */
+@media (max-width: 767.98px) {
+  html.dark-style table.responsive-card-table tbody tr {
+    background: rgba(15, 23, 42, .78) !important;
+    border-color: rgba(148, 163, 184, .18) !important;
+    box-shadow: 0 8px 22px rgba(2, 6, 23, .30) !important;
+    color: #e5e7eb !important;
+  }
+
+  html.dark-style table.responsive-card-table tbody td {
+    color: #e5e7eb !important;
+    background: transparent !important;
+  }
+
+  html.dark-style table.responsive-card-table tbody td::before {
+    color: #94a3b8 !important;
+  }
+
+  html.dark-style table.responsive-card-table tbody td.actions-cell,
+  html.dark-style table.responsive-card-table tbody td.text-end.actions-cell {
+    border-top-color: rgba(148, 163, 184, .14) !important;
+  }
+
+  html.dark-style table.responsive-card-table tbody td .text-muted,
+  html.dark-style table.responsive-card-table tbody td small,
+  html.dark-style table.responsive-card-table tbody td .small,
+  html.dark-style table.responsive-card-table tbody td .form-text {
+    color: #94a3b8 !important;
+  }
+
+  html.dark-style table.responsive-card-table tbody td .badge.bg-light,
+  html.dark-style table.responsive-card-table tbody td .badge.text-dark,
+  html.dark-style table.responsive-card-table tbody td .bg-light,
+  html.dark-style table.responsive-card-table tbody td .text-bg-light {
+    background: rgba(30, 41, 59, .88) !important;
+    color: #e5e7eb !important;
+    border-color: rgba(148, 163, 184, .16) !important;
+  }
+}
