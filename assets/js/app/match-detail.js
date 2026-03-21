@@ -2,10 +2,16 @@
 import { activateMenu, escapeHtml, formatDate, getQueryParam, nl2br, setAppTitle, showAlert, supabase } from './common.js';
 import { canEdit, requireAuthForPage } from './auth.js';
 import { notifyTeamEvent } from './notification-helpers.js';
+import { getPortalContext } from './portal-common.js';
 const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
 setAppTitle('Détail match');
 activateMenu('matches');
+
+const pageCtx = await requireAuthForPage();
+const portalCtx = await getPortalContext();
+const canModifyGamePlan = !!pageCtx && canEdit(pageCtx.role);
+let currentMatch = null;
 
 const id = getQueryParam('id');
 const host = document.getElementById('match-detail-host');
@@ -36,6 +42,7 @@ if (!id) {
     if (error) throw error;
     if (linksError) throw linksError;
 
+    currentMatch = match;
     pageTitle.textContent = match.opponent ? `${tt('match.label','Match')} vs ${match.opponent}` : tt('page.match_detail', 'Détail du match');
     editLink.href = `matches.html?edit=${match.id}`;
 
@@ -55,6 +62,7 @@ if (!id) {
     renderPlanList(lists.offense, (links || []).filter(item => item.side === 'offense'), tt('match.no_offense', 'Aucune tactique offense liée.'));
     renderPlanList(lists.defense, (links || []).filter(item => item.side === 'defense'), tt('match.no_defense', 'Aucune tactique défense liée.'));
     renderPlanList(lists.special_teams, (links || []).filter(item => item.side === 'special_teams'), tt('match.no_special', 'Aucune tactique special teams liée.'));
+    await loadMatchLiveSection();
   } catch (err) {
     console.error(err);
     showAlert(err.message || tt('match.load_failed', 'Impossible de charger le match.'), 'danger');
@@ -75,8 +83,6 @@ let currentMatchDiagramLinks = [];
 let currentMatchTacticDiagrams = [];
 
 
-const pageCtx = await requireAuthForPage();
-const canModifyGamePlan = !!pageCtx && canEdit(pageCtx.role);
 if (!canModifyGamePlan) {
   if (editLink) editLink.style.display = 'none';
   if (saveGamePlanBtn) saveGamePlanBtn.style.display = 'none';
@@ -85,6 +91,531 @@ if (!canModifyGamePlan) {
 
 
 
+
+
+function ensureLiveSectionHost() {
+  let section = document.getElementById('match-live-section');
+  if (!section) {
+    host.insertAdjacentHTML('afterend', `<div id="match-live-section" class="mt-4"></div>`);
+    section = document.getElementById('match-live-section');
+  }
+  return section;
+}
+
+function getLiveStatusLabel(value) {
+  return ({
+    scheduled: tt('match.live_status_scheduled', 'Prévu'),
+    live: tt('match.live_status_live', 'En direct'),
+    halftime: tt('match.live_status_halftime', 'Mi-temps'),
+    paused: tt('match.live_status_paused', 'Pause'),
+    finished: tt('match.live_status_finished', 'Terminé')
+  })[value || 'scheduled'] || tt('match.live_status_scheduled', 'Prévu');
+}
+
+function getLiveStatusBadgeClass(value) {
+  return ({
+    scheduled: 'bg-label-secondary',
+    live: 'bg-label-danger',
+    halftime: 'bg-label-warning',
+    paused: 'bg-label-info',
+    finished: 'bg-label-success'
+  })[value || 'scheduled'] || 'bg-label-secondary';
+}
+
+function normalizeLiveState(matchRow, statsRow) {
+  return {
+    status: matchRow?.live_status || 'scheduled',
+    period: matchRow?.live_period || 'Q1',
+    clock: matchRow?.live_clock || '15:00',
+    points: Number(statsRow?.points || 0),
+    touchdowns: Number(statsRow?.touchdowns || 0),
+    xp_made: Number(statsRow?.xp_made || 0),
+    two_pt_made: Number(statsRow?.two_pt_made || 0),
+    field_goals_made: Number(statsRow?.field_goals_made || 0),
+    safeties: Number(statsRow?.safeties || 0),
+    first_downs: Number(statsRow?.first_downs || 0),
+    total_yards: Number(statsRow?.total_yards || 0),
+    passing_yards: Number(statsRow?.passing_yards || 0),
+    rushing_yards: Number(statsRow?.rushing_yards || 0),
+    turnovers: Number(statsRow?.turnovers || 0),
+    penalties: Number(statsRow?.penalties || 0),
+    third_down_made: Number(statsRow?.third_down_made || 0),
+    third_down_attempts: Number(statsRow?.third_down_attempts || 0),
+    red_zone_trips: Number(statsRow?.red_zone_trips || 0),
+    red_zone_tds: Number(statsRow?.red_zone_tds || 0),
+    possession_seconds: Number(statsRow?.possession_seconds || 0)
+  };
+}
+
+function formatPossession(seconds) {
+  const total = Number(seconds || 0);
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+}
+
+function scoreChip(label, value, tone = 'primary') {
+  return `<div class="col-6 col-md-4 col-xl-3"><div class="border rounded-3 p-3 h-100 bg-white"><div class="d-flex align-items-center justify-content-between gap-2"><span class="badge bg-label-${escapeHtml(tone)}">${escapeHtml(label)}</span><span class="fw-bold fs-5">${escapeHtml(String(value ?? 0))}</span></div></div></div>`;
+}
+
+function eventTypeLabel(value) {
+  return ({
+    touchdown: 'Touchdown',
+    extra_point_good: 'Extra point',
+    two_point_good: '2-point',
+    field_goal_good: 'Field goal',
+    safety: 'Safety',
+    turnover: 'Turnover',
+    penalty: 'Penalty',
+    first_down: 'First down',
+    big_play: 'Big play',
+    custom: tt('common.custom', 'Personnalisé')
+  })[value || 'custom'] || tt('common.custom', 'Personnalisé');
+}
+
+
+function captainTitle(value) {
+  return ({
+    captain_1: tt('players.captain_1', 'Capitaine 1'),
+    captain_2: tt('players.captain_2', 'Capitaine 2'),
+    captain_3: tt('players.captain_3', 'Capitaine 3')
+  })[value || ''] || '';
+}
+
+function captainIconMarkup(value, sizeClass = 'captain-icon-sm') {
+  const map = {
+    captain_1: '../assets/img/captains/captaine1.png',
+    captain_2: '../assets/img/captains/captaine2.png',
+    captain_3: '../assets/img/captains/captaine3.png'
+  };
+  const src = map[value || ''];
+  if (!src) return '';
+  const title = captainTitle(value);
+  return `<span class="captain-icon-wrap" title="${escapeHtml(title)}"><img src="${src}" alt="${escapeHtml(title || 'Captain')}" class="captain-icon ${sizeClass}"></span>`;
+}
+
+function formatPlayerOptionLabel(player) {
+  const number = player?.jersey_number ? `#${player.jersey_number}` : '#—';
+  const name = player?.full_name || tt('players.player', 'Joueuse');
+  return `${number} · ${name}`;
+}
+
+function buildPlayerDropdown(players = [], selectedId = '', disabled = false) {
+  const selected = players.find((player) => String(player.id) === String(selectedId || '')) || null;
+  const selectedLabel = selected ? formatPlayerOptionLabel(selected) : tt('match.live_player_placeholder', 'Choisir une joueuse');
+  const selectedCaptain = selected ? captainIconMarkup(selected.captain_role) : '';
+  const items = [`
+    <li><button class="dropdown-item d-flex align-items-center gap-2" type="button" data-player-option="">${tt('common.none', 'Aucun')}</button></li>
+  `].concat(players.map((player) => `
+    <li>
+      <button class="dropdown-item d-flex align-items-center gap-2" type="button" data-player-option="${player.id}" data-player-label="${escapeHtml(formatPlayerOptionLabel(player))}">
+        ${captainIconMarkup(player.captain_role)}
+        <span>${escapeHtml(formatPlayerOptionLabel(player))}</span>
+      </button>
+    </li>
+  `));
+  return `
+    <input type="hidden" name="player_id" value="${escapeHtml(selected ? String(selected.id) : '')}">
+    <input type="hidden" name="player_name" value="${escapeHtml(selected ? (playerDisplayName(selected)) : '')}">
+    <div class="dropdown w-100 match-player-dropdown">
+      <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start d-flex align-items-center justify-content-between" type="button" data-bs-toggle="dropdown" aria-expanded="false" ${disabled ? 'disabled' : ''}>
+        <span class="d-inline-flex align-items-center gap-2 overflow-hidden">
+          ${selectedCaptain || '<span class="captain-icon-wrap d-none"></span>'}
+          <span class="text-truncate" data-player-selected-label>${escapeHtml(selectedLabel)}</span>
+        </span>
+      </button>
+      <ul class="dropdown-menu w-100 shadow-sm" style="max-height:280px; overflow:auto;">
+        ${items.join('')}
+      </ul>
+    </div>`;
+}
+
+function playerDisplayName(player) {
+  if (!player) return '';
+  const number = player?.jersey_number ? `#${player.jersey_number} · ` : '';
+  return `${number}${player.full_name || ''}`.trim();
+}
+
+function buildEventTimeline(events = []) {
+  if (!events.length) {
+    return `<div class="text-muted">${tt('match.live_no_events', 'Aucun événement enregistré pour le moment.')}</div>`;
+  }
+  return `<div class="list-group list-group-flush">${events.map((event) => `
+    <div class="list-group-item px-0">
+      <div class="d-flex justify-content-between gap-3 align-items-start flex-wrap">
+        <div>
+          <div class="fw-semibold">${escapeHtml(eventTypeLabel(event.event_type))}${event.player_name ? ` · ${escapeHtml(event.player_name)}` : ''}</div>
+          <div class="small text-muted">${escapeHtml(event.period || 'Q1')} • ${escapeHtml(event.clock_display || '15:00')}${event.notes ? ` • ${escapeHtml(event.notes)}` : ''}</div>
+        </div>
+        <div class="text-end">
+          ${Number(event.points_delta || 0) ? `<span class="badge bg-label-success">+${escapeHtml(String(event.points_delta || 0))} pts</span>` : ''}
+        </div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function applyEventToStats(baseStats, eventType, pointsDelta) {
+  const next = { ...baseStats };
+  const safePoints = Number(pointsDelta || 0);
+  next.points = Number(next.points || 0) + safePoints;
+  if (eventType === 'touchdown') next.touchdowns += 1;
+  if (eventType === 'extra_point_good') next.xp_made += 1;
+  if (eventType === 'two_point_good') next.two_pt_made += 1;
+  if (eventType === 'field_goal_good') next.field_goals_made += 1;
+  if (eventType === 'safety') next.safeties = Number(next.safeties || 0) + 1;
+  if (eventType === 'turnover') next.turnovers += 1;
+  if (eventType === 'penalty') next.penalties += 1;
+  if (eventType === 'first_down') next.first_downs += 1;
+  return next;
+}
+
+
+function recomputeStatsFromEvents(matchRow, events = []) {
+  return (events || []).reduce((acc, item) => applyEventToStats(acc, item.event_type, item.points_delta), normalizeLiveState(matchRow, {}));
+}
+
+async function loadMatchLiveSection() {
+  const section = ensureLiveSectionHost();
+  if (!section || !currentMatch?.id) return;
+  const isCoachManager = pageCtx?.role === 'coach' && Number(portalCtx.teamId || 0) === Number(currentMatch.team_id || 0);
+  try {
+    const [{ data: statsRow, error: statsErr }, { data: events, error: eventsErr }, { data: teamPlayers, error: playersErr }] = await Promise.all([
+      supabase.from('match_team_stats').select('*').eq('match_id', currentMatch.id).eq('team_id', currentMatch.team_id).maybeSingle(),
+      supabase.from('match_events').select('*').eq('match_id', currentMatch.id).eq('team_id', currentMatch.team_id).order('created_at', { ascending: false }),
+      supabase.from('players').select('id,full_name,jersey_number,captain_role').eq('team_id', currentMatch.team_id).order('jersey_number', { ascending: true, nullsFirst: false }).order('full_name')
+    ]);
+    if (statsErr && !String(statsErr.message || '').includes('relation')) throw statsErr;
+    if (eventsErr && !String(eventsErr.message || '').includes('relation')) throw eventsErr;
+    if (playersErr && !String(playersErr.message || '').includes('relation')) throw playersErr;
+    const state = normalizeLiveState(currentMatch, statsRow || {});
+    const derivedState = recomputeStatsFromEvents(currentMatch, events || []);
+    const displayState = {
+      ...state,
+      points: Number(derivedState.points || 0),
+      touchdowns: Number(derivedState.touchdowns || 0),
+      xp_made: Number(derivedState.xp_made || 0),
+      two_pt_made: Number(derivedState.two_pt_made || 0),
+      field_goals_made: Number(derivedState.field_goals_made || 0),
+      safeties: Number(derivedState.safeties || 0),
+      turnovers: Number(derivedState.turnovers || 0),
+      penalties: Number(derivedState.penalties || 0),
+      first_downs: Number(derivedState.first_downs || 0)
+    };
+    const computedTeamPoints = Number(displayState.points || 0);
+    const teamPlayersSafe = teamPlayers || [];
+    const statsVisible = isCoachManager || currentMatch.live_status === 'finished' || currentMatch.stats_ready === true;
+
+    if (!statsVisible) {
+      section.innerHTML = `<div class="card border-warning"><div class="card-body"><div class="d-flex justify-content-between align-items-center flex-wrap gap-3"><div><h5 class="mb-1">${tt('match.live_title', 'Statistiques du match')}</h5><div class="text-muted">${tt('match.live_hidden_until_finished', 'Les statistiques seront visibles une fois le match terminé et validé.')}</div></div><span class="badge ${getLiveStatusBadgeClass(currentMatch.live_status || 'scheduled')}">${escapeHtml(getLiveStatusLabel(currentMatch.live_status || 'scheduled'))}</span></div></div></div>`;
+      return;
+    }
+
+    const eventsEnabled = state.status === 'live';
+    section.innerHTML = `
+      <div class="card mb-3 border-${isCoachManager ? 'primary' : 'success'}" id="match-live-header-card">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div>
+            <h5 class="mb-1">${tt('match.live_title', 'Statistiques du match')}</h5>
+            <div class="small text-muted">${isCoachManager ? tt('match.live_coach_hint', 'Gestion en temps réel de ton équipe pendant le match.') : tt('match.live_readonly_hint', 'Lecture seule des statistiques du match terminé.')}</div>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="badge ${getLiveStatusBadgeClass(state.status)}">${escapeHtml(getLiveStatusLabel(state.status))}</span>
+            <span class="badge bg-label-dark">${escapeHtml(state.period)}</span>
+            <span class="badge bg-label-secondary">${escapeHtml(state.clock)}</span>
+          </div>
+        </div>
+      </div>
+
+      <details class="card mb-3 border-${isCoachManager ? 'primary' : 'success'}" id="match-live-stats-details">
+        <summary class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3 cursor-pointer" style="list-style:none;">
+          <div>
+            <h6 class="mb-1">${tt('match.live_stats_overview', 'Statistiques du match')}</h6>
+            <div class="small text-muted">${tt('match.live_stats_toggle_hint', 'Ouvrir pour afficher les cartes de statistiques.')}</div>
+          </div>
+          <i class="bx bx-chevron-down fs-4 text-muted"></i>
+        </summary>
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-lg-4">
+              <div class="border rounded-3 p-3 h-100 bg-light">
+                <div class="small text-muted mb-1">${tt('match.live_team_score', 'Score de l’équipe')}</div>
+                <div class="display-6 fw-bold mb-1">${escapeHtml(String(currentMatch.team_final_score ?? computedTeamPoints))}</div>
+                <div class="small text-muted">${escapeHtml(currentMatch.teams?.name || tt('match.team', 'Équipe'))}</div>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="border rounded-3 p-3 h-100 bg-light">
+                <div class="small text-muted mb-1">${tt('match.live_opponent_score', 'Score adverse')}</div>
+                <div class="display-6 fw-bold mb-1">${escapeHtml(String(currentMatch.opponent_final_score ?? 0))}</div>
+                <div class="small text-muted">${escapeHtml(currentMatch.opponent || tt('match.opponent', 'Adversaire'))}</div>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="border rounded-3 p-3 h-100 bg-light">
+                <div class="small text-muted mb-1">${tt('match.live_result', 'Résultat')}</div>
+                <div class="fs-4 fw-bold mb-1">${escapeHtml((() => {
+                  const teamScore = Number(currentMatch.team_final_score ?? computedTeamPoints ?? 0);
+                  const oppScore = Number(currentMatch.opponent_final_score ?? 0);
+                  if ((currentMatch.live_status || state.status) !== 'finished') return tt('match.live_pending', 'En attente');
+                  if (teamScore > oppScore) return tt('match.live_result_win', 'Victoire');
+                  if (teamScore < oppScore) return tt('match.live_result_loss', 'Défaite');
+                  return tt('match.live_result_draw', 'Égalité');
+                })())}</div>
+                <div class="small text-muted">${escapeHtml(currentMatch.opponent || tt('match.opponent', 'Adversaire'))}</div>
+              </div>
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            ${scoreChip(tt('match.live_touchdowns', 'Touchdowns'), displayState.touchdowns, 'primary')}
+            ${scoreChip(tt('match.live_xp', 'Extra points'), displayState.xp_made, 'success')}
+            ${scoreChip(tt('match.live_fg', 'Field goals'), displayState.field_goals_made, 'warning')}
+            ${scoreChip(tt('match.live_two_pt', '2-point conversions'), displayState.two_pt_made, 'dark')}
+          </div>
+
+          <div class="row g-3 mb-3">
+            ${scoreChip(tt('match.live_safeties', 'Safeties'), displayState.safeties, 'warning')}
+            ${scoreChip(tt('match.live_turnovers', 'Turnovers'), displayState.turnovers, 'danger')}
+            ${scoreChip(tt('match.live_penalties', 'Penalties'), displayState.penalties, 'secondary')}
+            ${scoreChip(tt('match.live_first_downs', 'First downs'), displayState.first_downs, 'info')}
+          </div>
+        </div>
+      </details>
+
+      ${isCoachManager ? `
+          <div class="card border mb-3">
+            <div class="card-header"><h6 class="mb-0">${tt('match.live_controls', 'Contrôle du match')}</h6></div>
+            <div class="card-body">
+              <form id="match-live-status-form" class="row g-3 align-items-end">
+                <div class="col-md-3"><label class="form-label">${tt('match.live_status', 'Statut')}</label><select class="form-select" name="live_status"><option value="scheduled" ${state.status==='scheduled'?'selected':''}>${tt('match.live_status_scheduled', 'Prévu')}</option><option value="live" ${state.status==='live'?'selected':''}>${tt('match.live_status_live', 'En direct')}</option><option value="halftime" ${state.status==='halftime'?'selected':''}>${tt('match.live_status_halftime', 'Mi-temps')}</option><option value="paused" ${state.status==='paused'?'selected':''}>${tt('match.live_status_paused', 'Pause')}</option><option value="finished" ${state.status==='finished'?'selected':''}>${tt('match.live_status_finished', 'Terminé')}</option></select></div>
+                <div class="col-md-3"><label class="form-label">${tt('match.live_period', 'Période')}</label><select class="form-select" name="live_period">${['Q1','Q2','Q3','Q4','OT'].map((period) => `<option value="${period}" ${state.period===period?'selected':''}>${period}</option>`).join('')}</select></div>
+                <div class="col-md-3"><label class="form-label">${tt('match.live_clock', 'Horloge')}</label><input class="form-control" type="text" name="live_clock" value="${escapeHtml(state.clock)}" placeholder="15:00"></div>
+                <div class="col-md-3"><button class="btn btn-primary w-100" type="submit">${tt('match.live_update_status', 'Mettre à jour')}</button></div>
+                <div class="col-12 ${state.status === 'finished' ? '' : 'd-none'}" id="match-final-score-row">
+                  <div class="row g-3">
+                    <div class="col-md-4"><label class="form-label">${tt('match.live_team_final_score', 'Score final équipe')}</label><input class="form-control" type="number" name="team_final_score" min="0" step="1" value="${escapeHtml(String(currentMatch.team_final_score ?? computedTeamPoints ?? 0))}" readonly></div>
+                    <div class="col-md-4"><label class="form-label">${tt('match.live_opponent_final_score', 'Score final adverse')}</label><input class="form-control" type="number" name="opponent_final_score" min="0" step="1" value="${escapeHtml(String(currentMatch.opponent_final_score ?? 0))}"></div>
+                    <div class="col-md-4"><div class="form-text pt-4 mt-2">${tt('match.live_final_score_hint', 'Le score de ton équipe est calculé automatiquement à partir des événements. Renseigne uniquement le score adverse.')}</div></div>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="card border mb-0 ${eventsEnabled ? '' : 'border-warning'}">
+            <div class="card-header"><h6 class="mb-0">${tt('match.live_add_event', 'Ajouter un événement')}</h6></div>
+            <div class="card-body">
+              <div id="match-events-live-warning" class="alert alert-warning mb-3 ${eventsEnabled ? 'd-none' : ''}">${tt('match.live_events_only_live', 'Tu peux ajouter des événements uniquement quand le match est en direct.')}</div>
+              <div class="d-flex flex-wrap gap-2 mb-3" id="match-live-quick-events">
+                ${[
+                  ['touchdown', 6, 'Touchdown'],
+                  ['extra_point_good', 1, 'XP'],
+                  ['two_point_good', 2, '2PT'],
+                  ['field_goal_good', 3, 'FG'],
+                  ['safety', 2, 'Safety'],
+                  ['turnover', 0, 'TO'],
+                  ['penalty', 0, 'Penalty'],
+                  ['first_down', 0, '1st down']
+                ].map(([type, points, label]) => `<button class="btn btn-sm btn-outline-secondary" type="button" ${eventsEnabled ? '' : 'disabled'} data-quick-event="${type}" data-quick-points="${points}">${label}</button>`).join('')}
+              </div>
+              <form id="match-event-form" class="row g-3 align-items-end">
+                <div class="col-md-3"><label class="form-label">${tt('match.event_type', 'Type')}</label><select class="form-select" name="event_type" ${eventsEnabled ? '' : 'disabled'}>${['touchdown','extra_point_good','two_point_good','field_goal_good','safety','turnover','penalty','first_down','big_play','custom'].map((item) => `<option value="${item}">${escapeHtml(eventTypeLabel(item))}</option>`).join('')}</select></div>
+                <div class="col-md-2"><label class="form-label">${tt('match.live_period', 'Période')}</label><select class="form-select" name="period" ${eventsEnabled ? '' : 'disabled'}>${['Q1','Q2','Q3','Q4','OT'].map((period) => `<option value="${period}" ${state.period===period?'selected':''}>${period}</option>`).join('')}</select></div>
+                <div class="col-md-2"><label class="form-label">${tt('match.live_clock', 'Horloge')}</label><input class="form-control" type="text" name="clock_display" value="${escapeHtml(state.clock)}" placeholder="12:34" ${eventsEnabled ? '' : 'disabled'}></div>
+                <div class="col-md-2"><label class="form-label">${tt('match.live_points_delta', 'Points')}</label><input class="form-control" type="number" name="points_delta" min="0" step="1" value="0" ${eventsEnabled ? '' : 'disabled'}></div>
+                <div class="col-md-3"><label class="form-label">${tt('match.live_player_name', 'Joueuse / joueuse clé')}</label>${buildPlayerDropdown(teamPlayersSafe, '', !eventsEnabled)}</div>
+                <div class="col-12"><label class="form-label">${tt('match.notes','Notes')}</label><input class="form-control" type="text" name="notes" placeholder="${tt('match.live_event_notes_placeholder', 'Détail rapide de l’action...')}" ${eventsEnabled ? '' : 'disabled'}></div>
+                <div class="col-12 d-flex justify-content-end"><button class="btn btn-primary" type="submit" ${eventsEnabled ? '' : 'disabled'}>${tt('match.live_event_save', 'Enregistrer l’événement')}</button></div>
+              </form>
+            </div>
+          </div>` : ''}
+
+          <div class="mt-4">
+            <h6 class="mb-3">${tt('match.live_timeline', 'Timeline')}</h6>
+            ${buildEventTimeline(events || [])}
+          </div>
+      `;
+
+    if (isCoachManager) {
+      const matchLiveStatusForm = document.getElementById('match-live-status-form');
+      const matchLiveStatusSelect = matchLiveStatusForm?.querySelector('[name="live_status"]');
+      const finalScoreRow = document.getElementById('match-final-score-row');
+      const eventForm = document.getElementById('match-event-form');
+      const statusSubmitBtn = matchLiveStatusForm?.querySelector('button[type="submit"]');
+      const statusSubmitLabel = statusSubmitBtn?.innerHTML || tt('match.live_update_status', 'Mettre à jour');
+      const syncFinalScoreVisibility = () => {
+        const currentStatus = matchLiveStatusSelect?.value || state.status;
+        const show = currentStatus === 'finished';
+        finalScoreRow?.classList.toggle('d-none', !show);
+        const teamInput = matchLiveStatusForm?.querySelector('[name="team_final_score"]');
+        if (teamInput) {
+          teamInput.value = String(computedTeamPoints);
+          teamInput.readOnly = true;
+        }
+      };
+      const syncEventControls = () => {
+        const liveNow = (matchLiveStatusSelect?.value || state.status) === 'live';
+        const eventWarning = document.getElementById('match-events-live-warning');
+        eventWarning?.classList.toggle('d-none', liveNow);
+        document.querySelectorAll('#match-live-quick-events [data-quick-event]').forEach((btn) => {
+          btn.disabled = !liveNow;
+        });
+        if (eventForm) {
+          eventForm.querySelectorAll('input, select, textarea, button[type="submit"]').forEach((field) => {
+            field.disabled = !liveNow;
+          });
+          const dropdownToggle = eventForm.querySelector('.match-player-dropdown .dropdown-toggle');
+          if (dropdownToggle) dropdownToggle.disabled = !liveNow;
+        }
+      };
+      const syncLiveMatchControls = () => {
+        syncFinalScoreVisibility();
+        syncEventControls();
+      };
+      matchLiveStatusSelect?.addEventListener('change', syncLiveMatchControls);
+      syncLiveMatchControls();
+
+      matchLiveStatusForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const fd = new FormData(form);
+        if (statusSubmitBtn) {
+          statusSubmitBtn.disabled = true;
+          statusSubmitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${tt('common.saving','Enregistrement...')}`;
+        }
+        try {
+        const nextStatus = fd.get('live_status') || 'scheduled';
+        const teamFinalScore = nextStatus === 'finished' ? Number(fd.get('team_final_score')) : null;
+        const opponentFinalScore = nextStatus === 'finished' ? Number(fd.get('opponent_final_score')) : null;
+        if (nextStatus === 'finished' && (!Number.isFinite(teamFinalScore) || !Number.isFinite(opponentFinalScore) || teamFinalScore < 0 || opponentFinalScore < 0)) {
+          showAlert(tt('match.live_final_score_required', 'Le score de ton équipe est calculé automatiquement à partir des événements. Renseigne uniquement le score adverse.'), 'warning');
+          return;
+        }
+        const payload = {
+          live_status: nextStatus,
+          live_period: fd.get('live_period') || 'Q1',
+          live_clock: fd.get('live_clock') || '15:00',
+          stats_ready: nextStatus === 'finished',
+          started_at: ['live', 'halftime', 'paused', 'finished'].includes(nextStatus) ? (currentMatch.started_at || new Date().toISOString()) : currentMatch.started_at || null,
+          finished_at: nextStatus === 'finished' ? new Date().toISOString() : null,
+          team_final_score: nextStatus === 'finished' ? teamFinalScore : (currentMatch.team_final_score ?? null),
+          opponent_final_score: nextStatus === 'finished' ? opponentFinalScore : (currentMatch.opponent_final_score ?? null)
+        };
+        const { error } = await supabase.from('matches').update(payload).eq('id', currentMatch.id).eq('team_id', currentMatch.team_id);
+        if (error) throw error;
+        if (nextStatus === 'finished') {
+          const { data: allEvents, error: allEventsErr } = await supabase.from('match_events').select('*').eq('match_id', currentMatch.id).eq('team_id', currentMatch.team_id).order('created_at', { ascending: true });
+          if (allEventsErr) throw allEventsErr;
+          const finalStats = recomputeStatsFromEvents({ ...currentMatch, ...payload }, allEvents || []);
+          finalStats.points = teamFinalScore;
+          const upsertPayload = {
+            match_id: currentMatch.id,
+            team_id: currentMatch.team_id,
+            points: finalStats.points,
+            touchdowns: finalStats.touchdowns,
+            xp_made: finalStats.xp_made,
+            two_pt_made: finalStats.two_pt_made,
+            field_goals_made: finalStats.field_goals_made,
+            first_downs: finalStats.first_downs,
+            total_yards: finalStats.total_yards,
+            passing_yards: finalStats.passing_yards,
+            rushing_yards: finalStats.rushing_yards,
+            turnovers: finalStats.turnovers,
+            penalties: finalStats.penalties,
+            third_down_made: finalStats.third_down_made,
+            third_down_attempts: finalStats.third_down_attempts,
+            red_zone_trips: finalStats.red_zone_trips,
+            red_zone_tds: finalStats.red_zone_tds,
+            possession_seconds: finalStats.possession_seconds,
+            updated_by_profile_id: pageCtx?.user?.id || null
+          };
+          const { error: statsErr } = await supabase.from('match_team_stats').upsert(upsertPayload, { onConflict: 'match_id,team_id' });
+          if (statsErr) throw statsErr;
+        }
+        currentMatch = { ...currentMatch, ...payload };
+        showAlert(tt('match.live_status_saved', 'Statut du match mis à jour.'), 'success');
+        await loadMatchLiveSection();
+        } finally {
+          if (statusSubmitBtn) {
+            statusSubmitBtn.disabled = false;
+            statusSubmitBtn.innerHTML = statusSubmitLabel;
+          }
+        }
+      });
+
+      document.getElementById('match-live-quick-events')?.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-quick-event]');
+        if (!btn) return;
+        const form = document.getElementById('match-event-form');
+        if (!form) return;
+        form.event_type.value = btn.dataset.quickEvent || 'custom';
+        form.points_delta.value = btn.dataset.quickPoints || '0';
+      });
+
+      document.querySelector('#match-event-form .match-player-dropdown .dropdown-menu')?.addEventListener('click', (event) => {
+        const option = event.target.closest('[data-player-option]');
+        if (!option) return;
+        const wrapper = document.querySelector('#match-event-form .match-player-dropdown');
+        if (!wrapper) return;
+        const hiddenId = wrapper.parentElement.querySelector('input[name="player_id"]');
+        const hiddenName = wrapper.parentElement.querySelector('input[name="player_name"]');
+        const labelHost = wrapper.querySelector('[data-player-selected-label]');
+        const iconHost = wrapper.querySelector('.captain-icon-wrap');
+        const playerId = option.dataset.playerOption || '';
+        hiddenId.value = playerId;
+        const selected = teamPlayersSafe.find((player) => String(player.id) === String(playerId)) || null;
+        hiddenName.value = selected ? playerDisplayName(selected) : '';
+        if (labelHost) labelHost.textContent = selected ? formatPlayerOptionLabel(selected) : tt('match.live_player_placeholder', 'Choisir une joueuse');
+        const iconHtml = selected ? captainIconMarkup(selected.captain_role) : '';
+        if (iconHost) {
+          iconHost.outerHTML = iconHtml || '<span class="captain-icon-wrap d-none"></span>';
+        } else if (iconHtml) {
+          wrapper.querySelector('.dropdown-toggle > span').insertAdjacentHTML('afterbegin', `${iconHtml}`);
+        }
+      });
+
+      document.getElementById('match-event-form')?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (currentMatch.live_status !== 'live') {
+          showAlert(tt('match.live_events_only_live', 'Tu peux ajouter des événements uniquement quand le match est en direct.'), 'warning');
+          return;
+        }
+        const form = event.currentTarget;
+        const fd = new FormData(form);
+        const eventType = String(fd.get('event_type') || 'custom');
+        const pointsDelta = Number(fd.get('points_delta') || 0);
+        const payload = {
+          match_id: currentMatch.id,
+          team_id: currentMatch.team_id,
+          event_type: eventType,
+          period: String(fd.get('period') || currentMatch.live_period || 'Q1'),
+          clock_display: String(fd.get('clock_display') || currentMatch.live_clock || '15:00'),
+          points_delta: pointsDelta,
+          player_name: String(fd.get('player_name') || '').trim() || null,
+          notes: String(fd.get('notes') || '').trim() || null,
+          created_by_profile_id: pageCtx?.user?.id || null
+        };
+        const { error: insertEventErr } = await supabase.from('match_events').insert(payload);
+        if (insertEventErr) throw insertEventErr;
+        form.reset();
+        const selectedLabel = form.querySelector('[data-player-selected-label]');
+        if (selectedLabel) selectedLabel.textContent = tt('match.live_player_placeholder', 'Choisir une joueuse');
+        const hiddenPlayerId = form.querySelector('input[name="player_id"]');
+        const hiddenPlayerName = form.querySelector('input[name="player_name"]');
+        if (hiddenPlayerId) hiddenPlayerId.value = '';
+        if (hiddenPlayerName) hiddenPlayerName.value = '';
+        const iconWrap = form.querySelector('.captain-icon-wrap');
+        if (iconWrap) iconWrap.outerHTML = '<span class="captain-icon-wrap d-none"></span>';
+        const pointsInput = form.querySelector('[name="points_delta"]');
+        if (pointsInput) pointsInput.value = '0';
+        showAlert(tt('match.live_event_saved', 'Événement enregistré.'), 'success');
+        await loadMatchLiveSection();
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    section.innerHTML = `<div class="card border-warning"><div class="card-body"><h6 class="mb-2">${tt('match.live_title', 'Statistiques du match')}</h6><div class="text-muted">${tt('match.live_setup_needed', 'La gestion live des stats nécessite la nouvelle migration SQL. Applique le fichier SQL dédié puis recharge la page.')}</div></div></div>`;
+  }
+}
 
 function parseDiagramPayload(diagramJson) {
   if (!diagramJson) return null;
@@ -180,7 +711,7 @@ function renderMatchGamePlan() {
               </div>`;
           }).join('')}
         </div>
-      </div>`;
+      </details>`;
   }).join('');
   gamePlanListHost.innerHTML = blocks;
 }

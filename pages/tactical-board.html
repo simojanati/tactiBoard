@@ -161,6 +161,21 @@
                       <label class="form-label" data-i18n="board.team">Équipe</label>
                       <div class="form-control bg-lighter" id="board-team-label">—</div>
                     </div>
+                    <div class="col-lg-6">
+                      <label class="form-label">Template terrain</label>
+                      <select id="field-template-select" class="form-select"></select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                      <label class="form-label">Disposition</label>
+                      <select id="field-layout-select" class="form-select"></select>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                      <label class="form-label">Preview</label>
+                      <div class="border rounded p-2 bg-lighter h-100">
+                        <img id="field-template-preview" alt="Template terrain" style="display:block;width:100%;max-height:110px;object-fit:contain;border-radius:8px;background:#f8f9ff">
+                        <div id="field-template-hint" class="small text-muted mt-2">Template par défaut</div>
+                      </div>
+                    </div>
                     <div class="col-12">
                       <div class="row g-3 align-items-end board-diagram-row">
                         <div class="col-lg-6">
@@ -217,52 +232,45 @@
 </div>
 <div id="mobile-board-actions-bar" class="mobile-board-actions-bar"></div>
 
+<div class="board-top-actions" id="board-top-actions">
+                      <button id="toolbar-duplicate-btn" class="btn btn-outline-info board-toolbar-action" type="button" title="Dupliquer" data-short-label="Dup">
+                        <i class="bx bx-duplicate"></i><span class="action-label" data-i18n="board.duplicate">Duplicate</span>
+                      </button>
+                      <button id="toolbar-copy-btn" class="btn btn-outline-primary board-toolbar-action" type="button" title="Copier" data-short-label="Copy">
+                        <i class="bx bx-copy"></i><span class="action-label" data-i18n="board.copy">Copy</span>
+                      </button>
+                      <button id="toolbar-paste-btn" class="btn btn-outline-success board-toolbar-action" type="button" title="Coller" data-short-label="Paste">
+                        <i class="bx bx-paste"></i><span class="action-label" data-i18n="board.paste">Paste</span>
+                      </button>
+                      <button id="toolbar-delete-btn" class="btn btn-outline-danger board-toolbar-action" type="button" title="Supprimer" data-short-label="Delete">
+                        <i class="bx bx-trash"></i><span class="action-label" data-i18n="board.delete">Delete</span>
+                      </button>
+                      <button class="btn btn-outline-primary board-toolbar-action" id="template-offense-btn" type="button" title="Template Offense">
+                        <i class="bx bx-shield-quarter"></i><span class="action-label" data-i18n="board.templates.offense">Offense</span>
+                      </button>
+                      <button class="btn btn-outline-danger board-toolbar-action" id="template-defense-btn" type="button" title="Template Defense">
+                        <i class="bx bx-shield-x"></i><span class="action-label" data-i18n="board.templates.defense">Defense</span>
+                      </button>
+                      <button class="btn btn-outline-warning board-toolbar-action" id="template-special-btn" type="button" title="Template Special Teams">
+                        <i class="bx bx-star"></i><span class="action-label" data-i18n="board.templates.special">Special</span>
+                      </button>
+                    </div>
+
 <div class="board-layout d-flex gap-3 flex-column flex-lg-row">
                     <div class="board-toolbar-col">
-                      <div class="board-sidebar board-toolbar h-100 collapsed" id="board-toolbar">
-                        <div class="d-flex justify-content-between align-items-center mb-2 board-toolbar-head">
-                          <div class="small text-uppercase text-muted fw-semibold board-toolbar-title" data-i18n="board.tools">Outils</div>
-                          <button class="btn btn-sm btn-icon btn-outline-secondary" id="toolbar-toggle-btn" type="button" title="Agrandir/réduire">
-                            <i class="bx bx-chevrons-right"></i>
-                          </button>
-                        </div>
-                        <div class="d-grid gap-2 mb-3" id="tool-buttons">
-                          <button class="btn btn-outline-primary board-tool-btn active" data-tool="select" title="Sélection" data-short-label="Sel" type="button" title="Sélection"><i class="bx bx-pointer"></i><span class="tool-label" data-i18n="board.tool.select">Sélection</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="offense" title="Offense" data-short-label="Off" type="button" title="Joueuse attaque"><i class="bx bx-circle"></i><span class="tool-label" data-i18n="board.tool.offense">Attaque</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="defense" title="Défense" data-short-label="Def" type="button" title="Joueuse défense"><i class="bx bx-x-circle"></i><span class="tool-label" data-i18n="board.tool.defense">Défense</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="ball" title="Ballon" data-short-label="Ball" type="button" title="Ballon football américain"><span class="board-ball-icon" aria-hidden="true">🏈</span><span class="tool-label" data-i18n="board.tool.ball">Ballon</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="text" title="Texte" data-short-label="Text" type="button" title="Texte"><i class="bx bx-text"></i><span class="tool-label" data-i18n="board.tool.text">Texte</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="line" title="Ligne" data-short-label="Line" type="button" title="Ligne"><i class="bx bx-minus"></i><span class="tool-label" data-i18n="board.tool.line">Ligne</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="arrow" title="Flèche" data-short-label="Arrow" type="button" title="Flèche droite"><i class="bx bx-right-arrow-alt"></i><span class="tool-label" data-i18n="board.tool.arrow">Flèche</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="curved-arrow" title="Courbe" data-short-label="Curve" type="button" title="Flèche courbe"><i class="bx bx-trending-up"></i><span class="tool-label" data-i18n="board.tool.curved">Courbe</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="pass-arrow" title="Passe" data-short-label="Pass" type="button" title="Flèche passe"><i class="bx bx-transfer-alt"></i><span class="tool-label" data-i18n="board.tool.pass">Passe</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="zone" title="Zone rouge" data-short-label="Zone" type="button" title="Zone rouge"><i class="bx bx-shape-square"></i><span class="tool-label" data-i18n="board.tool.zone">Zone</span></button>
-                          <button class="btn btn-outline-primary board-tool-btn" data-tool="path" title="Path: sélectionner une joueuse puis tracer le trajet" data-short-label="Path" type="button" title="Trajet joueuse"><i class="bx bx-git-branch"></i><span class="tool-label" data-i18n="board.tool.path">Path</span></button>
-
-                          <button id="terrain-orientation-btn" class="btn btn-outline-primary board-tool-btn board-toolbar-action" type="button" title="Basculer terrain horizontal / vertical" data-short-label="Terrain">
-                            <i class="bx bx-refresh"></i><span class="tool-label" data-i18n="board.tool.terrain">Terrain</span>
-                          </button>
-
-                          <div class="board-toolbar-divider"></div>
-                          <button id="toolbar-duplicate-btn" class="btn btn-outline-info board-tool-btn board-toolbar-action" type="button" title="Dupliquer" data-short-label="Dup">
-                            <i class="bx bx-duplicate"></i><span class="tool-label" data-i18n="board.duplicate">Duplicate</span>
-                          </button>
-                          <button id="toolbar-copy-btn" class="btn btn-outline-primary board-tool-btn board-toolbar-action" type="button" title="Copier" data-short-label="Copy">
-                            <i class="bx bx-copy"></i><span class="tool-label" data-i18n="board.copy">Copy</span>
-                          </button>
-                          <button id="toolbar-paste-btn" class="btn btn-outline-success board-tool-btn board-toolbar-action" type="button" title="Coller" data-short-label="Paste">
-                            <i class="bx bx-paste"></i><span class="tool-label" data-i18n="board.paste">Paste</span>
-                          </button>
-                          <button id="toolbar-delete-btn" class="btn btn-outline-danger board-tool-btn board-toolbar-action" type="button" title="Supprimer" data-short-label="Delete">
-                            <i class="bx bx-trash"></i><span class="tool-label" data-i18n="board.delete">Delete</span>
-                          </button>
-
-                        </div>
-                                                <div class="small text-uppercase text-muted fw-semibold mb-2 board-toolbar-title" data-i18n="board.templates">Templates</div>
-                        <div class="d-grid gap-2 mb-3 board-quick-actions">
-                          <button class="btn btn-outline-primary board-quick-btn" id="template-offense-btn" type="button" title="Template Offense"><i class="bx bx-shield-quarter"></i><span class="tool-label" data-i18n="board.templates.offense">Offense</span></button>
-                          <button class="btn btn-outline-danger board-quick-btn" id="template-defense-btn" type="button" title="Template Defense"><i class="bx bx-shield-x"></i><span class="tool-label" data-i18n="board.templates.defense">Defense</span></button>
-                          <button class="btn btn-outline-warning board-quick-btn" id="template-special-btn" type="button" title="Template Special Teams"><i class="bx bx-star"></i><span class="tool-label" data-i18n="board.templates.special">Special</span></button>
+                      <div class="board-sidebar board-toolbar h-100" id="board-toolbar">
+                        <div class="board-tools-grid" id="tool-buttons">
+                          <button class="btn btn-outline-primary board-tool-btn active" data-tool="select" title="Sélection" data-short-label="Sel" type="button"><i class="bx bx-pointer"></i><span class="tool-label" data-i18n="board.tool.select">Sélection</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="offense" title="Joueuse attaque" data-short-label="Off" type="button"><i class="bx bx-circle"></i><span class="tool-label" data-i18n="board.tool.offense">Attaque</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="defense" title="Joueuse défense" data-short-label="Def" type="button"><i class="bx bx-x-circle"></i><span class="tool-label" data-i18n="board.tool.defense">Défense</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="ball" title="Ballon" data-short-label="Ball" type="button"><span class="board-ball-icon" aria-hidden="true">🏈</span><span class="tool-label" data-i18n="board.tool.ball">Ballon</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="text" title="Texte" data-short-label="Text" type="button"><i class="bx bx-text"></i><span class="tool-label" data-i18n="board.tool.text">Texte</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="line" title="Ligne" data-short-label="Line" type="button"><i class="bx bx-minus"></i><span class="tool-label" data-i18n="board.tool.line">Ligne</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="arrow" title="Flèche droite" data-short-label="Arrow" type="button"><i class="bx bx-right-arrow-alt"></i><span class="tool-label" data-i18n="board.tool.arrow">Flèche</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="curved-arrow" title="Flèche courbe" data-short-label="Curve" type="button"><i class="bx bx-trending-up"></i><span class="tool-label" data-i18n="board.tool.curved">Courbe</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="pass-arrow" title="Flèche passe" data-short-label="Pass" type="button"><i class="bx bx-transfer-alt"></i><span class="tool-label" data-i18n="board.tool.pass">Passe</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="zone" title="Zone rouge" data-short-label="Zone" type="button"><i class="bx bx-shape-square"></i><span class="tool-label" data-i18n="board.tool.zone">Zone</span></button>
+                          <button class="btn btn-outline-primary board-tool-btn" data-tool="path" title="Trajet joueuse" data-short-label="Path" type="button"><i class="bx bx-git-branch"></i><span class="tool-label" data-i18n="board.tool.path">Path</span></button>
                         </div>
                       </div>
                     </div>

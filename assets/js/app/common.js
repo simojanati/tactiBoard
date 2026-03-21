@@ -17,10 +17,15 @@ export function setAppTitle(suffix = '') {
 }
 
 export function activateMenu(page) {
+  const pageAliases = {
+    'profile': 'dashboard'
+  };
+  const resolvedPage = pageAliases[page] || page;
+  window.__activeMenuPage = resolvedPage;
   document.querySelectorAll('[data-menu-page]').forEach(el => {
     const li = el.closest('.menu-item');
     if (!li) return;
-    li.classList.toggle('active', el.dataset.menuPage === page);
+    li.classList.toggle('active', el.dataset.menuPage === resolvedPage);
   });
 }
 
@@ -550,3 +555,23 @@ export function initRichTextEditor(textarea, { placeholder = '', minHeight = 180
   return api;
 }
 
+
+
+export async function uploadFieldTemplateImage(file, templateId, variant) {
+  if (!file) return null;
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+  const safeVariant = String(variant || 'image').replace(/[^a-z0-9_-]/gi, '-').toLowerCase();
+  const path = `template-${templateId}-${safeVariant}-${Date.now()}.${ext}`;
+  const bucket = window.APP_CONFIG.fieldTemplatesBucket || 'field-templates';
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    upsert: true,
+    cacheControl: '3600'
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return {
+    url: data?.publicUrl || null,
+    path,
+    filename: file.name || `${safeVariant}.${ext}`
+  };
+}

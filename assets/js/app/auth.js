@@ -13,6 +13,7 @@ export const ROLE_LABELS = {
 export const ROLE_PAGE_RULES = {
   'index.html': ['admin','coach','player'],
   'teams.html': ['admin'],
+  'field-templates.html': ['admin'],
   'players.html': ['admin','coach'],
   'coaches.html': ['admin'],
   'tactics.html': ['admin','coach'],

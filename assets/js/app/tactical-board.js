@@ -16,13 +16,16 @@ const canvasEl = document.getElementById('tactical-canvas');
 const canvas = new fabricLib.Canvas(canvasEl, {
   preserveObjectStacking: true,
   selection: true,
-  backgroundColor: '#0f7c3d'
+  backgroundColor: 'transparent'
 });
 let BASE_CANVAS_W = 1920;
 let BASE_CANVAS_H = 1080;
 let CANVAS_ASPECT = BASE_CANVAS_W / BASE_CANVAS_H;
 const TERRAIN_IMAGE_URLS = { horizontal: '../assets/img/terrains/terrain-horizontal.png', vertical: '../assets/img/terrains/terrain-vertical.png' };
 let BOARD_ORIENTATION = window.matchMedia('(max-width: 767.98px)').matches ? 'vertical' : 'horizontal';
+let BOARD_LAYOUT_MODE = BOARD_ORIENTATION === 'vertical' ? 'full_vertical' : 'full_horizontal';
+let fieldTemplates = [];
+const fieldTemplateImageCache = {};
 const terrainImageCache = { horizontal: null, vertical: null };
 let CANVAS_W = BASE_CANVAS_W;
 let timelinePlaying = false;
@@ -54,35 +57,72 @@ function updateBoardDimensionsForOrientation() {
   CANVAS_ASPECT = BASE_CANVAS_W / BASE_CANVAS_H;
 }
 
-updateBoardDimensionsForOrientation();
+updateBoardDimensionsForLayout(BOARD_ORIENTATION === 'vertical' ? 'full_vertical' : 'full_horizontal');
 CANVAS_W = BASE_CANVAS_W;
 CANVAS_H = BASE_CANVAS_H;
 canvas.setWidth(CANVAS_W);
 canvas.setHeight(CANVAS_H);
 
-function preloadTerrainImage(orientation) {
+function getLayoutOrientation(layoutMode = BOARD_LAYOUT_MODE) {
+  return layoutMode === 'full_horizontal' ? 'horizontal' : 'vertical';
+}
+
+function getTerrainUrlForLayout(layoutMode = BOARD_LAYOUT_MODE) {
+  if (layoutMode === 'vertical') layoutMode = 'full_vertical';
+  else if (layoutMode === 'horizontal') layoutMode = 'full_horizontal';
+  const activeId = getActiveFieldTemplateId();
+  const selected = fieldTemplates.find(t => Number(t.id) === activeId) || null;
+  if (selected) {
+    if (layoutMode === 'full_horizontal' && selected.full_horizontal_url) return selected.full_horizontal_url;
+    if (layoutMode === 'full_vertical' && selected.full_vertical_url) return selected.full_vertical_url;
+    if (layoutMode === 'half_vertical' && selected.half_vertical_url) return selected.half_vertical_url;
+  }
+  if (layoutMode === 'half_vertical') return '../assets/img/terrains/terrain-vertical.png';
+  return layoutMode === 'full_vertical' ? '../assets/img/terrains/terrain-vertical.png' : '../assets/img/terrains/terrain-horizontal.png';
+}
+
+function preloadTerrainImageByUrl(url) {
   return new Promise((resolve, reject) => {
-    const normalized = orientation === 'vertical' ? 'vertical' : 'horizontal';
-    if (terrainImageCache[normalized]) {
-      resolve(terrainImageCache[normalized]);
+    const src = url || '../assets/img/terrains/terrain-horizontal.png';
+    if (fieldTemplateImageCache[src]) {
+      resolve(fieldTemplateImageCache[src]);
       return;
     }
     const img = new Image();
+    // Allow exporting canvas when terrain images come from Supabase/public storage.
+    // This must be set before src.
+    img.crossOrigin = 'anonymous';
+    img.referrerPolicy = 'no-referrer';
     img.onload = () => {
-      terrainImageCache[normalized] = img;
+      fieldTemplateImageCache[src] = img;
       resolve(img);
     };
     img.onerror = reject;
-    img.src = TERRAIN_IMAGE_URLS[normalized];
+    img.src = src;
   });
 }
 
-async function applyTerrainBackground(targetCanvas = canvas, width = CANVAS_W, height = CANVAS_H, orientation = BOARD_ORIENTATION) {
+function updateBoardDimensionsForLayout(layoutMode = BOARD_LAYOUT_MODE) {
+  BOARD_LAYOUT_MODE = layoutMode === 'half_vertical' ? 'half_vertical' : (layoutMode === 'full_vertical' ? 'full_vertical' : 'full_horizontal');
+  BOARD_ORIENTATION = getLayoutOrientation(BOARD_LAYOUT_MODE);
+  if (BOARD_LAYOUT_MODE === 'full_horizontal') {
+    BASE_CANVAS_W = 1920;
+    BASE_CANVAS_H = 1080;
+  } else if (BOARD_LAYOUT_MODE === 'half_vertical') {
+    BASE_CANVAS_W = 1080;
+    BASE_CANVAS_H = 960;
+  } else {
+    BASE_CANVAS_W = 1080;
+    BASE_CANVAS_H = 1920;
+  }
+  CANVAS_ASPECT = BASE_CANVAS_W / BASE_CANVAS_H;
+}
+
+async function applyTerrainBackground(targetCanvas = canvas, width = CANVAS_W, height = CANVAS_H, layoutMode = BOARD_LAYOUT_MODE) {
   if (!targetCanvas) return;
-  const normalized = orientation === 'vertical' ? 'vertical' : 'horizontal';
-  targetCanvas.backgroundColor = '#0f7c3d';
+  targetCanvas.backgroundColor = 'transparent';
   try {
-    const raw = await preloadTerrainImage(normalized);
+    const raw = await preloadTerrainImageByUrl(getTerrainUrlForLayout(layoutMode));
     const bgImg = new fabricLib.Image(raw, {
       originX: 'left',
       originY: 'top',
@@ -92,39 +132,33 @@ async function applyTerrainBackground(targetCanvas = canvas, width = CANVAS_W, h
       evented: false,
       excludeFromExport: false
     });
-    bgImg.set({
-      scaleX: width / raw.width,
-      scaleY: height / raw.height
-    });
-    targetCanvas.setBackgroundImage(bgImg, targetCanvas.renderAll.bind(targetCanvas), {
-      originX: 'left',
-      originY: 'top',
-      left: 0,
-      top: 0
-    });
+    bgImg.set({ scaleX: width / raw.width, scaleY: height / raw.height });
+    targetCanvas.setBackgroundImage(bgImg, targetCanvas.renderAll.bind(targetCanvas), { originX: 'left', originY: 'top', left: 0, top: 0 });
   } catch (e) {
     console.warn('Terrain image not loaded', e);
     targetCanvas.setBackgroundImage(null, targetCanvas.renderAll.bind(targetCanvas));
   }
 }
 
-async function setBoardOrientation(nextOrientation, { preserveObjects = true, silent = false } = {}) {
-  const normalized = nextOrientation === 'vertical' ? 'vertical' : 'horizontal';
-  if (normalized === BOARD_ORIENTATION && !silent) {
-    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
+async function setBoardLayoutMode(nextLayoutMode, { preserveObjects = true, silent = false } = {}) {
+  const normalized = nextLayoutMode === 'half_vertical' ? 'half_vertical' : (nextLayoutMode === 'full_vertical' ? 'full_vertical' : 'full_horizontal');
+  if (normalized === BOARD_LAYOUT_MODE && !silent) {
+    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_LAYOUT_MODE);
     updateTerrainOrientationButton();
+    updateFieldTemplatePreview();
     return;
   }
-  if (normalized === BOARD_ORIENTATION && silent) {
-    updateBoardDimensionsForOrientation();
+  if (normalized === BOARD_LAYOUT_MODE && silent) {
+    updateBoardDimensionsForLayout(normalized);
     const size = computeResponsiveCanvasSize();
     CANVAS_W = size.width;
     CANVAS_H = size.height;
     canvas.setWidth(CANVAS_W);
     canvas.setHeight(CANVAS_H);
-    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
+    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_LAYOUT_MODE);
     resetViewport();
     updateTerrainOrientationButton();
+    updateFieldTemplatePreview();
     return;
   }
   const previousW = CANVAS_W;
@@ -132,8 +166,7 @@ async function setBoardOrientation(nextOrientation, { preserveObjects = true, si
   const previousOrientation = BOARD_ORIENTATION;
   const userJson = preserveObjects ? getUserObjectsJson() : null;
   const previousPlayerPaths = Array.isArray(playerPaths) ? JSON.parse(JSON.stringify(playerPaths)) : [];
-  BOARD_ORIENTATION = normalized;
-  updateBoardDimensionsForOrientation();
+  updateBoardDimensionsForLayout(normalized);
   const size = computeResponsiveCanvasSize();
   CANVAS_W = size.width;
   CANVAS_H = size.height;
@@ -144,33 +177,25 @@ async function setBoardOrientation(nextOrientation, { preserveObjects = true, si
     userJson.boardHeight = previousH;
     userJson.boardOrientation = previousOrientation;
     const originalObjectsBeforeOrientation = Array.isArray(userJson.objects) ? JSON.parse(JSON.stringify(userJson.objects)) : [];
-    const rotated = transformObjectsForOrientation(userJson, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, normalized);
+    const rotated = transformObjectsForOrientation(userJson, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, BOARD_ORIENTATION);
     const scaled = scaleDiagramJsonToCurrent(rotated);
     await restoreBoardState(scaled);
     try {
-      postProcessObjectsAfterOrientationV935(originalObjectsBeforeOrientation, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, normalized);
+      postProcessObjectsAfterOrientationV935(originalObjectsBeforeOrientation, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, BOARD_ORIENTATION);
     } catch (e) {
       console.warn(e);
     }
-
     if (previousPlayerPaths.length) {
       const mapPathPoint = (x, y) => {
         const px = Number(x || 0) / Math.max(1, previousW);
         const py = Number(y || 0) / Math.max(1, previousH);
-        if (previousOrientation === 'horizontal' && normalized === 'vertical') {
-          return { x: py * CANVAS_W, y: (1 - px) * CANVAS_H };
-        }
-        if (previousOrientation === 'vertical' && normalized === 'horizontal') {
-          return { x: (1 - py) * CANVAS_W, y: px * CANVAS_H };
-        }
+        if (previousOrientation === 'horizontal' && BOARD_ORIENTATION === 'vertical') return { x: py * CANVAS_W, y: (1 - px) * CANVAS_H };
+        if (previousOrientation === 'vertical' && BOARD_ORIENTATION === 'horizontal') return { x: (1 - py) * CANVAS_W, y: px * CANVAS_H };
         return { x: px * CANVAS_W, y: py * CANVAS_H };
       };
       playerPaths = previousPlayerPaths.map((path) => ({
         ...path,
-        points: Array.isArray(path.points) ? path.points.map((pt) => {
-          const mapped = mapPathPoint(pt.x, pt.y);
-          return { ...pt, x: mapped.x, y: mapped.y };
-        }) : []
+        points: Array.isArray(path.points) ? path.points.map((pt) => ({ ...pt, ...mapPathPoint(pt.x, pt.y) })) : []
       }));
     }
   } else {
@@ -179,7 +204,14 @@ async function setBoardOrientation(nextOrientation, { preserveObjects = true, si
     resetViewport();
   }
   updateTerrainOrientationButton();
+  updateFieldTemplatePreview();
 }
+
+async function setBoardOrientation(nextOrientation, { preserveObjects = true, silent = false } = {}) {
+  const targetLayout = nextOrientation === 'vertical' ? 'full_vertical' : 'full_horizontal';
+  await setBoardLayoutMode(targetLayout, { preserveObjects, silent });
+}
+
 
 function toggleBoardOrientation() {
   const next = BOARD_ORIENTATION === 'horizontal' ? 'vertical' : 'horizontal';
@@ -218,6 +250,15 @@ const diagramNewBtn = document.getElementById('diagram-new-btn');
 const diagramDeleteBtn = document.getElementById('diagram-delete-btn');
 const diagramPrimaryBtn = document.getElementById('diagram-primary-btn');
 const diagramTitleInput = document.getElementById('diagram-title-input');
+const fieldTemplateSelect = document.getElementById('field-template-select');
+const fieldLayoutSelect = document.getElementById('field-layout-select');
+const fieldTemplatePreview = document.getElementById('field-template-preview');
+const fieldTemplateHint = document.getElementById('field-template-hint');
+const DEFAULT_FIELD_LAYOUT_OPTIONS = [
+  { value: 'full_horizontal', label: 'Terrain complet horizontal' },
+  { value: 'full_vertical', label: 'Terrain complet vertical' },
+  { value: 'half_vertical', label: 'Demi-terrain' }
+];
 const objectProps = document.getElementById('object-properties');
 const objectEmpty = document.getElementById('object-empty-state');
 const propLabel = document.getElementById('prop-label');
@@ -240,6 +281,16 @@ const redoBtn = document.getElementById('redo-btn');
 const presentationBtn = document.getElementById('presentation-btn');
 const presentationBar = document.getElementById('presentation-bar');
 const presentationTitle = document.getElementById('presentation-title');
+
+function syncDiagramMetaFields(diagram = null) {
+  if (diagramTitleInput) diagramTitleInput.value = (diagram?.title || '').trim();
+  if (diagramDateLabel) {
+    diagramDateLabel.textContent = diagram?.updated_at
+      ? new Date(diagram.updated_at).toLocaleString()
+      : '—';
+  }
+}
+
 const presentationLaserBtn = document.getElementById('presentation-laser-btn');
 const presentationLaser = document.getElementById('presentation-laser');
 const presentationStage = document.getElementById('presentation-stage');
@@ -257,12 +308,61 @@ const animationExportGifBtn = document.getElementById('animation-export-gif-btn'
 const animationStatusBadge = document.getElementById('animation-status-badge');
 const animationHelpText = document.getElementById('animation-help-text');
 const tacticalBoardHost = document.getElementById('tactical-board-host');
-const toolButtons = [...document.querySelectorAll('.board-tool-btn')];
+let toolButtons = [...document.querySelectorAll('.board-tool-btn')];
 const boardToolbar = document.getElementById('board-toolbar');
 const toolbarToggleBtn = document.getElementById('toolbar-toggle-btn');
 const boardPropertiesSidebar = document.getElementById('board-properties-sidebar');
 const boardToolbarCol = document.querySelector('.board-toolbar-col');
 const boardCanvasWrap = document.getElementById('board-canvas-wrap');
+
+function initFixedLeftToolbar() {
+  try {
+    const host = document.querySelector('.board-toolbar-col');
+    const sourceGrid = document.getElementById('tool-buttons');
+    if (!host || !sourceGrid) return;
+
+    let fixedGrid = document.getElementById('board-left-tools');
+    if (!fixedGrid) {
+      fixedGrid = document.createElement('div');
+      fixedGrid.id = 'board-left-tools';
+      fixedGrid.className = 'board-fixed-tools-grid';
+      sourceGrid.querySelectorAll('.board-tool-btn').forEach((btn) => {
+        const clone = btn.cloneNode(true);
+        clone.classList.add('board-fixed-tool-btn');
+        clone.removeAttribute('id');
+        clone.addEventListener('click', (e) => {
+          e.preventDefault();
+          setTool(clone.dataset.tool || 'select');
+        });
+        fixedGrid.appendChild(clone);
+      });
+      host.appendChild(fixedGrid);
+    }
+
+    sourceGrid.classList.add('board-tools-grid-source');
+    if (boardToolbar) boardToolbar.classList.add('board-toolbar-source-hidden');
+    toolButtons = [
+      ...sourceGrid.querySelectorAll('.board-tool-btn'),
+      ...fixedGrid.querySelectorAll('.board-tool-btn')
+    ];
+    fixedGrid.querySelectorAll('.board-tool-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.tool === currentTool);
+      const title = btn.getAttribute('title') || btn.dataset.shortLabel || btn.textContent.trim();
+      if (title) {
+        btn.setAttribute('title', title);
+        btn.setAttribute('aria-label', title);
+      }
+    });
+  } catch (e) {
+    console.warn(e);
+  }
+}
+
+try {
+  requestAnimationFrame(() => document.documentElement.classList.add('tb-toolbar-ready'));
+} catch (_) {
+  document.documentElement.classList.add('tb-toolbar-ready');
+}
 
 let tactics = [];
 let currentTactic = null;
@@ -504,7 +604,9 @@ function getStoredDiagramPayload() {
     board,
     media: {
       boardOrientation: BOARD_ORIENTATION,
-      previewAspectRatio: BOARD_ORIENTATION === 'vertical' ? '9/16' : '16/9'
+      boardLayoutMode: BOARD_LAYOUT_MODE,
+      fieldTemplateId: Number(fieldTemplateSelect?.value || currentTactic?.field_template_id || 0) || null,
+      previewAspectRatio: BOARD_LAYOUT_MODE === 'full_horizontal' ? '16/9' : '9/16'
     },
     animation: hasAnimation ? {
       version: 1,
@@ -520,6 +622,7 @@ function getStoredDiagramPayload() {
         })) : []
       })) : [],
       boardOrientation: BOARD_ORIENTATION,
+      boardLayoutMode: BOARD_LAYOUT_MODE,
       savedAt: new Date().toISOString()
     } : null
   };
@@ -930,15 +1033,18 @@ async function createRenderCanvasFromBaseState() {
   const offscreenEl = document.createElement('canvas');
   offscreenEl.width = CANVAS_W;
   offscreenEl.height = CANVAS_H;
-  const renderCanvas = new fabricLib.StaticCanvas(offscreenEl, { backgroundColor: '#0f7c3d' });
+  const renderCanvas = new fabricLib.StaticCanvas(offscreenEl, { backgroundColor: 'transparent' });
   renderCanvas.setWidth(CANVAS_W);
   renderCanvas.setHeight(CANVAS_H);
   const parsed = typeof animationBaseState === 'string' ? JSON.parse(animationBaseState) : animationBaseState;
   const sourceBoard = parsed?.board ? parsed.board : parsed;
-  const sourceOrientation = sourceBoard?.boardOrientation || BOARD_ORIENTATION;
+  const sourceLayoutMode = sourceBoard?.boardLayoutMode
+    || parsed?.media?.boardLayoutMode
+    || currentTactic?.field_layout_mode
+    || BOARD_LAYOUT_MODE;
   const scaled = scaleDiagramJsonToCurrent(sourceBoard);
   await new Promise(resolve => renderCanvas.loadFromJSON(scaled, resolve));
-  await drawFieldBackgroundOnCanvas(renderCanvas, CANVAS_W, CANVAS_H, sourceOrientation);
+  await drawFieldBackgroundOnCanvas(renderCanvas, CANVAS_W, CANVAS_H, sourceLayoutMode);
   renderCanvas.renderAll();
   return renderCanvas;
 }
@@ -1163,159 +1269,6 @@ function resizeBoardCanvas({ preserveObjects = true } = {}) {
   canvas.setWidth(CANVAS_W);
   canvas.setHeight(CANVAS_H);
 
-function updateBoardDimensionsForOrientation() {
-  if (BOARD_ORIENTATION === 'vertical') {
-    BASE_CANVAS_W = 1080;
-    BASE_CANVAS_H = 1920;
-  } else {
-    BASE_CANVAS_W = 1920;
-    BASE_CANVAS_H = 1080;
-  }
-  CANVAS_ASPECT = BASE_CANVAS_W / BASE_CANVAS_H;
-}
-
-updateBoardDimensionsForOrientation();
-CANVAS_W = BASE_CANVAS_W;
-CANVAS_H = BASE_CANVAS_H;
-canvas.setWidth(CANVAS_W);
-canvas.setHeight(CANVAS_H);
-
-function preloadTerrainImage(orientation) {
-  return new Promise((resolve, reject) => {
-    const normalized = orientation === 'vertical' ? 'vertical' : 'horizontal';
-    if (terrainImageCache[normalized]) {
-      resolve(terrainImageCache[normalized]);
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
-      terrainImageCache[normalized] = img;
-      resolve(img);
-    };
-    img.onerror = reject;
-    img.src = TERRAIN_IMAGE_URLS[normalized];
-  });
-}
-
-async function applyTerrainBackground(targetCanvas = canvas, width = CANVAS_W, height = CANVAS_H, orientation = BOARD_ORIENTATION) {
-  if (!targetCanvas) return;
-  const normalized = orientation === 'vertical' ? 'vertical' : 'horizontal';
-  targetCanvas.backgroundColor = '#0f7c3d';
-  try {
-    const raw = await preloadTerrainImage(normalized);
-    const bgImg = new fabricLib.Image(raw, {
-      originX: 'left',
-      originY: 'top',
-      left: 0,
-      top: 0,
-      selectable: false,
-      evented: false,
-      excludeFromExport: false
-    });
-    bgImg.set({
-      scaleX: width / raw.width,
-      scaleY: height / raw.height
-    });
-    targetCanvas.setBackgroundImage(bgImg, targetCanvas.renderAll.bind(targetCanvas), {
-      originX: 'left',
-      originY: 'top',
-      left: 0,
-      top: 0
-    });
-  } catch (e) {
-    console.warn('Terrain image not loaded', e);
-    targetCanvas.setBackgroundImage(null, targetCanvas.renderAll.bind(targetCanvas));
-  }
-}
-
-async function setBoardOrientation(nextOrientation, { preserveObjects = true, silent = false } = {}) {
-  const normalized = nextOrientation === 'vertical' ? 'vertical' : 'horizontal';
-  if (normalized === BOARD_ORIENTATION && !silent) {
-    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
-    updateTerrainOrientationButton();
-    return;
-  }
-  if (normalized === BOARD_ORIENTATION && silent) {
-    updateBoardDimensionsForOrientation();
-    const size = computeResponsiveCanvasSize();
-    CANVAS_W = size.width;
-    CANVAS_H = size.height;
-    canvas.setWidth(CANVAS_W);
-    canvas.setHeight(CANVAS_H);
-    await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
-    resetViewport();
-    updateTerrainOrientationButton();
-    return;
-  }
-  const previousW = CANVAS_W;
-  const previousH = CANVAS_H;
-  const previousOrientation = BOARD_ORIENTATION;
-  const userJson = preserveObjects ? getUserObjectsJson() : null;
-  const previousPlayerPaths = Array.isArray(playerPaths) ? JSON.parse(JSON.stringify(playerPaths)) : [];
-  BOARD_ORIENTATION = normalized;
-  updateBoardDimensionsForOrientation();
-  const size = computeResponsiveCanvasSize();
-  CANVAS_W = size.width;
-  CANVAS_H = size.height;
-  canvas.setWidth(CANVAS_W);
-  canvas.setHeight(CANVAS_H);
-  if (preserveObjects && userJson?.objects?.length) {
-    userJson.boardWidth = previousW;
-    userJson.boardHeight = previousH;
-    userJson.boardOrientation = previousOrientation;
-    const originalObjectsBeforeOrientation = Array.isArray(userJson.objects) ? JSON.parse(JSON.stringify(userJson.objects)) : [];
-    const rotated = transformObjectsForOrientation(userJson, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, normalized);
-    const scaled = scaleDiagramJsonToCurrent(rotated);
-    await restoreBoardState(scaled);
-    try {
-      postProcessObjectsAfterOrientationV935(originalObjectsBeforeOrientation, previousW, previousH, CANVAS_W, CANVAS_H, previousOrientation, normalized);
-    } catch (e) {
-      console.warn(e);
-    }
-
-    if (previousPlayerPaths.length) {
-      const mapPathPoint = (x, y) => {
-        const px = Number(x || 0) / Math.max(1, previousW);
-        const py = Number(y || 0) / Math.max(1, previousH);
-        if (previousOrientation === 'horizontal' && normalized === 'vertical') {
-          return { x: py * CANVAS_W, y: (1 - px) * CANVAS_H };
-        }
-        if (previousOrientation === 'vertical' && normalized === 'horizontal') {
-          return { x: (1 - py) * CANVAS_W, y: px * CANVAS_H };
-        }
-        return { x: px * CANVAS_W, y: py * CANVAS_H };
-      };
-      playerPaths = previousPlayerPaths.map((path) => ({
-        ...path,
-        points: Array.isArray(path.points) ? path.points.map((pt) => {
-          const mapped = mapPathPoint(pt.x, pt.y);
-          return { ...pt, x: mapped.x, y: mapped.y };
-        }) : []
-      }));
-    }
-  } else {
-    canvas.clear();
-    await renderFieldBackground();
-    resetViewport();
-  }
-  updateTerrainOrientationButton();
-}
-
-function toggleBoardOrientation() {
-  const next = BOARD_ORIENTATION === 'horizontal' ? 'vertical' : 'horizontal';
-  setBoardOrientation(next, { preserveObjects: true }).catch(console.error);
-}
-
-function updateTerrainOrientationButton() {
-  const btn = document.getElementById('terrain-orientation-btn');
-  if (!btn) return;
-  const label = btn.querySelector('.tool-label');
-  const shortLabel = BOARD_ORIENTATION === 'horizontal' ? 'Horizontal' : 'Vertical';
-  btn.setAttribute('title', BOARD_ORIENTATION === 'horizontal' ? tt('board.field.switch_vertical','Passer en terrain vertical') : tt('board.field.switch_horizontal','Passer en terrain horizontal'));
-  btn.setAttribute('aria-label', shortLabel);
-  btn.dataset.shortLabel = shortLabel;
-  if (label) label.textContent = shortLabel;
-}
 
   if (preserveObjects && userJson?.objects?.length) {
     const sx = CANVAS_W / previousW;
@@ -1476,14 +1429,15 @@ function setTool(tool) {
   else canvas.defaultCursor = tool === 'select' ? 'default' : 'crosshair';
 }
 
+initFixedLeftToolbar();
 if (boardToolbar) boardToolbar.classList.remove('collapsed');
-if (boardToolbarCol) boardToolbarCol.classList.add('is-expanded');
+if (boardToolbarCol) boardToolbarCol.classList.remove('is-expanded');
 if (toolbarToggleBtn) toolbarToggleBtn.classList.add('d-none');
 
 if (toolbarToggleBtn && boardToolbar) {
   toolbarToggleBtn?.addEventListener('click', () => {
     boardToolbar.classList.toggle('collapsed');
-    boardToolbarCol?.classList.toggle('is-expanded', !boardToolbar.classList.contains('collapsed'));
+    boardToolbarCol?.classList.remove('is-expanded');
     const icon = toolbarToggleBtn.querySelector('i');
     if (icon) {
       icon.className = boardToolbar.classList.contains('collapsed') ? 'bx bx-chevrons-right' : 'bx bx-chevrons-left';
@@ -1608,16 +1562,17 @@ function fieldBg(obj) {
   return obj;
 }
 
-async function drawFieldBackgroundOnCanvas(targetCanvas, width, height, orientation = BOARD_ORIENTATION) {
+async function drawFieldBackgroundOnCanvas(targetCanvas, width, height, layoutMode = BOARD_LAYOUT_MODE) {
   if (!targetCanvas) return;
   targetCanvas.getObjects().filter(obj => obj.isFieldBg).forEach(obj => targetCanvas.remove(obj));
-  await applyTerrainBackground(targetCanvas, width, height, orientation);
+  const normalizedLayoutMode = layoutMode === 'half_vertical' ? 'half_vertical' : (layoutMode === 'full_vertical' ? 'full_vertical' : (layoutMode === 'vertical' ? 'full_vertical' : 'full_horizontal'));
+  await applyTerrainBackground(targetCanvas, width, height, normalizedLayoutMode);
   targetCanvas.renderAll();
 }
 
 async function renderFieldBackground() {
   canvas.getObjects().filter(obj => obj.isFieldBg).forEach(obj => canvas.remove(obj));
-  await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_ORIENTATION);
+  await applyTerrainBackground(canvas, CANVAS_W, CANVAS_H, BOARD_LAYOUT_MODE);
   canvas.renderAll();
 }
 
@@ -1627,6 +1582,7 @@ function getUserObjectsJson() {
     boardWidth: CANVAS_W,
     boardHeight: CANVAS_H,
     boardOrientation: BOARD_ORIENTATION,
+    boardLayoutMode: BOARD_LAYOUT_MODE,
     objects: canvas.getObjects().filter(obj => !obj.isFieldBg).map(obj => { ensureAnimId(obj); return obj.toObject(['pbType', 'labelText', 'animId', 'pbArrowKind', 'pbColor', 'pbStrokeWidth', 'pbCoords', 'pbCurveSide']); })
   };
 }
@@ -2023,14 +1979,12 @@ async function loadCurrentDiagramOrFallback(preferredDiagramId = null) {
   // Default board entry from menu: start with a fresh horizontal board and no selected saved diagram.
   if (!target) {
     currentDiagram = null;
-    BOARD_ORIENTATION = 'horizontal';
-    updateBoardDimensionsForOrientation();
-    const size = computeResponsiveCanvasSize();
-    CANVAS_W = size.width;
-    CANVAS_H = size.height;
-    canvas.setWidth(CANVAS_W);
-    canvas.setHeight(CANVAS_H);
+    syncDiagramMetaFields(null);
+    if (currentTactic) currentTactic.field_layout_mode = 'full_horizontal';
+    await setBoardLayoutMode('full_horizontal', { preserveObjects: false, silent: true });
+    if (fieldLayoutSelect) fieldLayoutSelect.value = 'full_horizontal';
     updateTerrainOrientationButton();
+    updateFieldTemplatePreview();
     renderDiagramSelector();
     canvas.getObjects().filter(o => !o.isFieldBg).forEach(o => canvas.remove(o));
     canvas.discardActiveObject();
@@ -2042,22 +1996,21 @@ async function loadCurrentDiagramOrFallback(preferredDiagramId = null) {
   }
 
   currentDiagram = target;
+  syncDiagramMetaFields(currentDiagram);
   renderDiagramSelector();
 
   const payloadJson = target?.diagram_json || currentTactic?.diagram_json || null;
   try {
     const parsed = payloadJson ? unwrapStoredDiagramPayload(payloadJson) : null;
-    const targetOrientation = parsed?.board?.boardOrientation
-      ? (parsed.board.boardOrientation === 'vertical' ? 'vertical' : 'horizontal')
-      : 'horizontal';
-    BOARD_ORIENTATION = targetOrientation;
-    updateBoardDimensionsForOrientation();
+    const targetLayoutMode = parsed?.board?.boardLayoutMode || currentTactic?.field_layout_mode || 'full_horizontal';
+    updateBoardDimensionsForLayout(targetLayoutMode);
     const size = computeResponsiveCanvasSize();
     CANVAS_W = size.width;
     CANVAS_H = size.height;
     canvas.setWidth(CANVAS_W);
     canvas.setHeight(CANVAS_H);
     updateTerrainOrientationButton();
+    updateFieldTemplatePreview();
     await renderFieldBackground();
     resetViewport();
   } catch (e) {
@@ -2069,6 +2022,7 @@ async function loadCurrentDiagramOrFallback(preferredDiagramId = null) {
 
 function beginNewDiagram() {
   currentDiagram = null;
+  syncDiagramMetaFields(null);
   animationKeyframes = [];
   animationBaseState = null;
   animationDurationMs = 0;
@@ -2137,7 +2091,7 @@ function selectedTacticId() {
 }
 
 async function loadTactics() {
-  const { data, error } = await supabase.from('tactics').select('id,title,team_id,diagram_json,diagram_updated_at,diagram_image_url,teams(name)').order('title');
+  const { data, error } = await supabase.from('tactics').select('id,title,team_id,diagram_json,diagram_updated_at,diagram_image_url,field_template_id,field_layout_mode,teams(name)').order('title');
   if (error) throw error;
   tactics = data || [];
   const queryId = Number(new URLSearchParams(location.search).get('id')) || null;
@@ -2154,6 +2108,11 @@ async function applyTactic(id, preferredDiagramId = null) {
   currentTactic = tactics.find(t => String(t.id) === String(id)) || null;
   if (!currentTactic) {
     boardTeamLabel.textContent = '—';
+    const defaultTemplateId = getDefaultFieldTemplateId();
+    if (fieldTemplateSelect) fieldTemplateSelect.value = defaultTemplateId ? String(defaultTemplateId) : '';
+    if (fieldLayoutSelect) fieldLayoutSelect.value = 'full_horizontal';
+    BOARD_LAYOUT_MODE = 'full_horizontal';
+    if (currentTactic) currentTactic.field_template_id = defaultTemplateId;
     currentDiagrams = [];
     currentDiagram = null;
     renderDiagramSelector();
@@ -2170,6 +2129,7 @@ async function applyTactic(id, preferredDiagramId = null) {
   boardTeamLabel.textContent = currentTactic.teams?.name || '—';
   if (presentationTitle) presentationTitle.textContent = currentTactic.title || 'Tactical Board';
   if (openTacticBtn) openTacticBtn && (openTacticBtn.href = `tactic-detail.html?id=${currentTactic.id}`);
+  syncBoardTemplateControlsFromTactic(currentTactic);
   await loadDiagramsForTactic(currentTactic.id);
   await loadCurrentDiagramOrFallback(preferredDiagramId);
 }
@@ -2188,18 +2148,16 @@ async function loadDiagramJson(diagramJson) {
     payload = null;
   }
 
-  const targetOrientation = payload?.board?.boardOrientation
-    ? (payload.board.boardOrientation === 'vertical' ? 'vertical' : 'horizontal')
-    : BOARD_ORIENTATION;
+  const targetLayoutMode = payload?.board?.boardLayoutMode || payload?.animation?.boardLayoutMode || currentTactic?.field_layout_mode || BOARD_LAYOUT_MODE;
 
-  BOARD_ORIENTATION = targetOrientation;
-  updateBoardDimensionsForOrientation();
+  updateBoardDimensionsForLayout(targetLayoutMode);
   const size = computeResponsiveCanvasSize();
   CANVAS_W = size.width;
   CANVAS_H = size.height;
   canvas.setWidth(CANVAS_W);
   canvas.setHeight(CANVAS_H);
   updateTerrainOrientationButton();
+  updateFieldTemplatePreview();
 
   canvas.clear();
   await renderFieldBackground();
@@ -2395,11 +2353,20 @@ async function saveBoard() {
     currentDiagram = currentDiagrams.find(d => d.id === savedDiagram.id) || savedDiagram;
     renderDiagramSelector();
 
+    const fieldPayload = {
+      field_template_id: Number(fieldTemplateSelect?.value || 0) || null,
+      field_layout_mode: BOARD_LAYOUT_MODE,
+      updated_at: now
+    };
+    const { error: tacticFieldError } = await supabase.from('tactics').update(fieldPayload).eq('id', tacticId);
+    if (tacticFieldError) throw tacticFieldError;
+    currentTactic = { ...(currentTactic || {}), ...fieldPayload };
+
     if (currentDiagram.is_primary || currentDiagrams.length === 1) {
       await syncPrimaryDiagramToTactic(currentDiagram);
     }
 
-    if (diagramDateLabel) diagramDateLabel.textContent = new Date(currentDiagram.updated_at).toLocaleString();
+    syncDiagramMetaFields(currentDiagram);
     stopSaveProgressCountdown(saveProgressHandle, true);
     showAlert('Diagramme sauvegardé.', 'success');
   } catch (err) {
@@ -3844,4 +3811,119 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (e) {
     console.warn(e);
   }
+});
+
+
+function getCompleteFieldTemplates() {
+  return (fieldTemplates || []).filter(row => row?.full_horizontal_url && row?.full_vertical_url && row?.half_vertical_url);
+}
+
+function getDefaultFieldTemplateId() {
+  const templates = getCompleteFieldTemplates();
+  if (!templates.length) return null;
+  const preferred = templates.find(row => Number(row.id) === 1);
+  return Number(preferred?.id || templates[0]?.id || 0) || null;
+}
+
+function getActiveFieldTemplateId() {
+  return Number(fieldTemplateSelect?.value || currentTactic?.field_template_id || getDefaultFieldTemplateId() || 0) || null;
+}
+
+function updateFieldTemplatePreview() {
+  if (!fieldTemplatePreview) return;
+  const activeId = getActiveFieldTemplateId();
+  const selected = getCompleteFieldTemplates().find(row => Number(row.id) === activeId) || null;
+  const imgUrl = getTerrainUrlForLayout(BOARD_LAYOUT_MODE);
+  fieldTemplatePreview.src = imgUrl;
+  fieldTemplatePreview.style.display = 'block';
+  if (fieldTemplateHint) {
+    fieldTemplateHint.textContent = selected ? `${selected.name} · ${DEFAULT_FIELD_LAYOUT_OPTIONS.find(o => o.value === BOARD_LAYOUT_MODE)?.label || ''}` : 'Aucun template';
+  }
+  if (fieldLayoutSelect) fieldLayoutSelect.value = BOARD_LAYOUT_MODE || 'full_horizontal';
+}
+
+async function loadFieldTemplatesForBoard() {
+  if (!fieldTemplateSelect) return;
+  try {
+    const { data, error } = await supabase.from('field_templates').select('*').order('id');
+    if (error) throw error;
+    fieldTemplates = (data || []).filter(row => row?.full_horizontal_url && row?.full_vertical_url && row?.half_vertical_url);
+    fieldTemplateSelect.innerHTML = fieldTemplates.map(row => `<option value="${row.id}">${escapeHtml(row.name || 'Template')}</option>`).join('');
+    const preferredId = currentTactic?.field_template_id && fieldTemplates.some(row => Number(row.id) === Number(currentTactic.field_template_id))
+      ? Number(currentTactic.field_template_id)
+      : getDefaultFieldTemplateId();
+    if (fieldTemplateSelect && preferredId) fieldTemplateSelect.value = String(preferredId);
+    if (currentTactic && !currentTactic.field_template_id && preferredId) currentTactic.field_template_id = preferredId;
+    updateFieldTemplatePreview();
+  } catch (error) {
+    console.warn(error);
+    fieldTemplates = [];
+    fieldTemplateSelect.innerHTML = '';
+  }
+}
+
+function syncBoardTemplateControlsFromTactic(tactic) {
+  if (fieldLayoutSelect) fieldLayoutSelect.value = tactic?.field_layout_mode || 'full_horizontal';
+  const activeId = tactic?.field_template_id || getDefaultFieldTemplateId() || '';
+  if (fieldTemplateSelect) fieldTemplateSelect.value = activeId ? String(activeId) : '';
+  if (tactic && !tactic.field_template_id && activeId) tactic.field_template_id = Number(activeId);
+  BOARD_LAYOUT_MODE = tactic?.field_layout_mode || BOARD_LAYOUT_MODE || 'full_horizontal';
+  updateFieldTemplatePreview();
+}
+
+function bindFieldTemplateControls() {
+  if (fieldLayoutSelect && !fieldLayoutSelect.dataset.boundPhase2) {
+    fieldLayoutSelect.dataset.boundPhase2 = '1';
+    fieldLayoutSelect.innerHTML = DEFAULT_FIELD_LAYOUT_OPTIONS.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+    fieldLayoutSelect.addEventListener('change', async () => {
+      await setBoardLayoutMode(fieldLayoutSelect.value || 'full_horizontal', { preserveObjects: true });
+      if (currentTactic) currentTactic.field_layout_mode = BOARD_LAYOUT_MODE;
+    });
+  }
+  if (fieldTemplateSelect && !fieldTemplateSelect.dataset.boundPhase2) {
+    fieldTemplateSelect.dataset.boundPhase2 = '1';
+    fieldTemplateSelect.addEventListener('change', async () => {
+      if (currentTactic) currentTactic.field_template_id = Number(fieldTemplateSelect.value || 0) || null;
+      await renderFieldBackground();
+      updateFieldTemplatePreview();
+    });
+  }
+}
+
+const __originalToggleBoardOrientationPhase2 = toggleBoardOrientation;
+toggleBoardOrientation = function() {
+  const order = ['full_horizontal', 'full_vertical', 'half_vertical'];
+  const idx = order.indexOf(BOARD_LAYOUT_MODE);
+  const next = order[(idx + 1) % order.length];
+  if (fieldLayoutSelect) fieldLayoutSelect.value = next;
+  setBoardLayoutMode(next, { preserveObjects: true }).catch(console.error);
+};
+
+const __originalUpdateTerrainOrientationButtonPhase2 = updateTerrainOrientationButton;
+updateTerrainOrientationButton = function() {
+  const btn = document.getElementById('terrain-orientation-btn');
+  if (!btn) return;
+  const label = btn.querySelector('.tool-label');
+  const current = DEFAULT_FIELD_LAYOUT_OPTIONS.find(opt => opt.value === BOARD_LAYOUT_MODE);
+  btn.setAttribute('title', current ? current.label : 'Terrain');
+  btn.setAttribute('aria-label', current ? current.label : 'Terrain');
+  btn.dataset.shortLabel = current ? current.label.replace('Terrain ', '').replace('complet ', '').replace('vertical','Vert').replace('horizontal','Horiz') : 'Terrain';
+  if (label) label.textContent = current ? current.label : 'Terrain';
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  bindFieldTemplateControls();
+  await loadFieldTemplatesForBoard();
+  if (currentTactic) syncBoardTemplateControlsFromTactic(currentTactic);
+  if (fieldLayoutSelect && !fieldLayoutSelect.value) fieldLayoutSelect.value = BOARD_LAYOUT_MODE || 'full_horizontal';
+  updateTerrainOrientationButton();
+  updateFieldTemplatePreview();
+});
+queueMicrotask(async () => {
+  bindFieldTemplateControls();
+  await loadFieldTemplatesForBoard();
+  if (currentTactic) syncBoardTemplateControlsFromTactic(currentTactic);
+  if (fieldLayoutSelect && !fieldLayoutSelect.value) fieldLayoutSelect.value = BOARD_LAYOUT_MODE || 'full_horizontal';
+  updateTerrainOrientationButton();
+  updateFieldTemplatePreview();
 });

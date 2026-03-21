@@ -1,6 +1,5 @@
-
 import { firstAllowedPage, getSession, signInWithPassword, signUpWithPassword } from './auth.js';
-import { clearAlert, fetchTeamsOptions, showAlert } from './common.js';
+import { clearAlert, fetchTeamsOptions, showAlert, supabase } from './common.js';
 import { initI18n, t, setLanguage } from './i18n.js';
 
 await initI18n();
@@ -11,6 +10,12 @@ const toggleBtns = document.querySelectorAll('[data-auth-tab]');
 const loginPane = document.getElementById('login-pane');
 const registerPane = document.getElementById('register-pane');
 const registerTeamSelect = document.getElementById('register-team-select');
+const forgotLink = document.getElementById('forgot-password-link');
+const forgotModal = document.getElementById('forgot-password-modal');
+const forgotForm = document.getElementById('forgot-password-form');
+const forgotClose = document.getElementById('forgot-password-close');
+const forgotCancel = document.getElementById('forgot-password-cancel');
+const forgotFeedback = document.getElementById('forgot-password-feedback');
 
 function initPasswordToggles() {
   document.querySelectorAll('.form-password-toggle').forEach(group => {
@@ -34,7 +39,6 @@ function initPasswordToggles() {
   });
 }
 
-
 async function redirectIfLoggedIn() {
   const session = await getSession();
   if (session?.user) {
@@ -51,7 +55,39 @@ function switchTab(tab) {
   clearAlert();
 }
 
+function setForgotFeedback(message = '', type = 'danger') {
+  if (!forgotFeedback) return;
+  if (!message) {
+    forgotFeedback.className = 'alert d-none';
+    forgotFeedback.textContent = '';
+    return;
+  }
+  forgotFeedback.className = `alert alert-${type}`;
+  forgotFeedback.textContent = message;
+}
+
+function openForgotModal() {
+  setForgotFeedback('');
+  forgotModal?.classList.remove('d-none');
+  setTimeout(() => forgotForm?.querySelector('input[name="email"]')?.focus(), 20);
+}
+
+function closeForgotModal() {
+  forgotModal?.classList.add('d-none');
+  forgotForm?.reset();
+  setForgotFeedback('');
+}
+
 toggleBtns.forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.authTab)));
+forgotLink?.addEventListener('click', openForgotModal);
+forgotClose?.addEventListener('click', closeForgotModal);
+forgotCancel?.addEventListener('click', closeForgotModal);
+forgotModal?.addEventListener('click', e => {
+  if (e.target === forgotModal) closeForgotModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && forgotModal && !forgotModal.classList.contains('d-none')) closeForgotModal();
+});
 
 signInForm?.addEventListener('submit', async e => {
   e.preventDefault();
@@ -118,12 +154,39 @@ signUpForm?.addEventListener('submit', async e => {
   }
 });
 
-initPasswordToggles();
+forgotForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(forgotForm);
+  const btn = forgotForm.querySelector('[type="submit"]');
+  const original = btn?.innerHTML;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>${t('common.saving','Envoi...')}`;
+  }
+  try {
+    setForgotFeedback('');
+    const { error } = await supabase.rpc('request_password_reset', {
+      p_email: String(fd.get('email') || '').trim().toLowerCase()
+    });
+    if (error) throw error;
+    closeForgotModal();
+    showAlert(t('login.forgot_sent','La demande a été transmise à l\'administrateur.'), 'success');
+  } catch (err) {
+    console.error(err);
+    const msg = err?.message || t('login.forgot_failed','Impossible d\'envoyer la demande.');
+    setForgotFeedback(msg, 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+  }
+});
 
+initPasswordToggles();
 redirectIfLoggedIn();
 
 (function injectLoginLanguageSwitcher(){ const box=document.createElement('div'); box.className='position-fixed top-0 end-0 p-3'; box.innerHTML=`<select class="form-select form-select-sm" style="width:88px"><option value="fr" ${localStorage.getItem('tactiboard_lang')==='en'?'':'selected'}>${t('lang.fr')}</option><option value="en" ${localStorage.getItem('tactiboard_lang')==='en'?'selected':''}>${t('lang.en')}</option></select>`; box.querySelector('select').addEventListener('change',e=>setLanguage(e.target.value)); document.body.appendChild(box); })();
-
 
 if (registerTeamSelect) {
   try { await fetchTeamsOptions(registerTeamSelect, true); } catch (e) { console.warn('Unable to load teams for signup', e); }

@@ -24,6 +24,38 @@ const tacticQuestionsModalList = document.getElementById('tactic-questions-modal
 const ctx = await getPortalContext();
 let currentTactic = null;
 
+let availableFieldTemplates = [];
+const DEFAULT_FIELD_LAYOUT = 'full_horizontal';
+
+function getCompleteFieldTemplatesDetail() {
+  return (availableFieldTemplates || []).filter(row => row?.full_horizontal_url && row?.full_vertical_url && row?.half_vertical_url);
+}
+
+function getDefaultFieldTemplateDetail() {
+  const rows = getCompleteFieldTemplatesDetail();
+  return rows.find(row => Number(row.id) === 1) || rows[0] || null;
+}
+
+function normalizeFieldLayoutMode(layoutMode) {
+  return layoutMode === 'half_vertical' ? 'half_vertical' : (layoutMode === 'full_vertical' ? 'full_vertical' : DEFAULT_FIELD_LAYOUT);
+}
+
+function getFieldLayoutLabel(layoutMode) {
+  const normalized = normalizeFieldLayoutMode(layoutMode);
+  if (normalized === 'half_vertical') return tt('field.layout_half_vertical', 'Demi-terrain');
+  if (normalized === 'full_vertical') return tt('field.layout_full_vertical', 'Terrain complet vertical');
+  return tt('field.layout_full_horizontal', 'Terrain complet horizontal');
+}
+
+function getFieldTemplatePreviewUrl(templateRow, layoutMode) {
+  const row = templateRow || getDefaultFieldTemplateDetail();
+  if (!row) return '';
+  const normalized = normalizeFieldLayoutMode(layoutMode);
+  if (normalized === 'half_vertical') return row.half_vertical_url || row.full_vertical_url || row.full_horizontal_url || '';
+  if (normalized === 'full_vertical') return row.full_vertical_url || row.full_horizontal_url || row.half_vertical_url || '';
+  return row.full_horizontal_url || row.full_vertical_url || row.half_vertical_url || '';
+}
+
 function parseDiagramPayload(diagramJson) {
   if (!diagramJson) return null;
   try {
@@ -410,14 +442,15 @@ if (!id) {
   host.innerHTML = `<div class="card"><div class="card-body">${tt('tactic.none_selected', 'Aucune tactique sélectionnée.')}</div></div>`;
 } else {
   try {
-    const [{ data: tactic, error }, { data: assignments, error: assignErr }, { data: sessionLinks, error: sessionsErr }, { data: matchLinks, error: matchesErr }, { data: quizLinks, error: quizzesErr }, { data: reads, error: readsErr }, { data: diagrams, error: diagramsErr }] = await Promise.all([
+    const [{ data: tactic, error }, { data: assignments, error: assignErr }, { data: sessionLinks, error: sessionsErr }, { data: matchLinks, error: matchesErr }, { data: quizLinks, error: quizzesErr }, { data: reads, error: readsErr }, { data: diagrams, error: diagramsErr }, { data: fieldTemplatesRows, error: fieldTemplatesErr }] = await Promise.all([
       supabase.from('tactics').select('*, teams(name)').eq('id', id).single(),
       supabase.from('tactic_assignments').select('position,instruction').eq('tactic_id', id).order('id'),
       supabase.from('session_tactics').select('priority, sessions(id,title,session_date,location)').eq('tactic_id', id),
       supabase.from('match_tactics').select('side,priority_order, matches(id,opponent,match_date,location)').eq('tactic_id', id),
       supabase.from('quizzes').select('id,title,description,status,quiz_attempts(id,score,total_questions,submitted_at)').eq('tactic_id', id).order('created_at', { ascending: false }),
       supabase.from('tactic_reads').select('profile_id,version_seen,read_at').eq('tactic_id', id),
-      supabase.from('tactic_diagrams').select('*').eq('tactic_id', id).order('is_primary', { ascending: false }).order('updated_at', { ascending: false })
+      supabase.from('tactic_diagrams').select('*').eq('tactic_id', id).order('is_primary', { ascending: false }).order('updated_at', { ascending: false }),
+      supabase.from('field_templates').select('id,name,full_horizontal_url,full_vertical_url,half_vertical_url').order('id')
     ]);
 
     if (error) throw error;
@@ -427,8 +460,15 @@ if (!id) {
     if (quizzesErr) throw quizzesErr;
     if (readsErr && !String(readsErr.message || '').includes('relation')) throw readsErr;
     if (diagramsErr && !String(diagramsErr.message || '').includes('relation')) throw diagramsErr;
+    if (fieldTemplatesErr && !String(fieldTemplatesErr.message || '').includes('relation')) throw fieldTemplatesErr;
 
     currentTactic = tactic;
+    availableFieldTemplates = (fieldTemplatesRows || []).filter(row => row?.full_horizontal_url && row?.full_vertical_url && row?.half_vertical_url);
+    const fallbackTemplate = getDefaultFieldTemplateDetail();
+    const resolvedFieldTemplate = availableFieldTemplates.find(row => Number(row.id) === Number(tactic?.field_template_id || 0)) || fallbackTemplate;
+    const resolvedFieldLayout = normalizeFieldLayoutMode(tactic?.field_layout_mode || DEFAULT_FIELD_LAYOUT);
+    if (currentTactic && !currentTactic.field_template_id && resolvedFieldTemplate?.id) currentTactic.field_template_id = Number(resolvedFieldTemplate.id);
+    if (currentTactic && !currentTactic.field_layout_mode) currentTactic.field_layout_mode = resolvedFieldLayout;
     const myAssignments = ctx.role === 'player' ? matchAssignmentsForPlayer(assignments || [], ctx.membership) : [];
     const playerReadEntry = ctx.role === 'player' ? (reads || []).find(item => item.profile_id === ctx.user?.id) : null;
     const playerReadState = ctx.role === 'player' ? buildReadState(tactic, playerReadEntry) : null;
@@ -445,7 +485,10 @@ if (!id) {
     const primaryDiagramImageUrl = primaryDiagram
       ? (primaryDiagram.image_url || primaryDiagram.diagramImageUrl || tdImageUrlFromDiagram(primaryDiagram) || '')
       : (tactic.diagram_image_url || '');
-    let tacticDiagramHtml = `<div class="text-muted">${tt('tactic.no_linked_image', 'Aucune image liée à cette tactique.')}</div>`;
+    const fieldTemplateFallbackUrl = getFieldTemplatePreviewUrl(resolvedFieldTemplate, resolvedFieldLayout);
+    let tacticDiagramHtml = fieldTemplateFallbackUrl
+      ? `<div><img src="${fieldTemplateFallbackUrl}" class="img-fluid rounded border w-100" alt="${escapeHtml(resolvedFieldTemplate?.name || tt('nav.field_templates', 'Template terrain'))}" style="aspect-ratio:${resolvedFieldLayout === 'full_horizontal' ? '16/9' : '9/16'};object-fit:contain;background:#f8f9ff"><div class="small text-muted mt-2">${tt('tactic.template_preview_fallback', 'Aperçu du terrain enregistré avec cette tactique.')}</div></div>`
+      : `<div class="text-muted">${tt('tactic.no_linked_image', 'Aucune image liée à cette tactique.')}</div>`;
     if (primaryDiagramVideoUrl) {
             tacticDiagramHtml = `
         <video id="td-primary-video" class="img-fluid rounded border w-100 ${diagramMediaOrientationClassV940(primaryDiagram)}" src="${primaryDiagramVideoUrl}" playsinline preload="metadata" controls></video>
@@ -480,6 +523,8 @@ if (!id) {
                   <span class="badge bg-label-secondary">${escapeHtml(tactic.category || tt('tactic.uncategorized', 'Sans catégorie'))}</span>
                   <span class="badge bg-label-info">${escapeHtml(tactic.formation || '—')}</span>
                   <span class="badge bg-label-dark">${tt('tactic.version', 'Version')} ${escapeHtml(tactic.version || 1)}</span>
+                  <span class="badge bg-label-light">${escapeHtml(resolvedFieldTemplate?.name || tt('nav.field_templates', 'Template terrain'))}</span>
+                  <span class="badge bg-label-info">${escapeHtml(getFieldLayoutLabel(resolvedFieldLayout))}</span>
                   <span class="badge bg-label-warning">MAJ ${escapeHtml(tactic.updated_at ? new Date(tactic.updated_at).toLocaleDateString() : '—')}</span>
                 </div>
               </div>
@@ -540,6 +585,8 @@ if (!id) {
               <div class="mb-2"><strong>${tt('tactic.phase','Phase')}:</strong> ${escapeHtml(tactic.phase || '—')}</div>
               <div class="mb-2"><strong>${tt('tactic.category','Catégorie')}:</strong> ${escapeHtml(tactic.category || '—')}</div>
               <div class="mb-2"><strong>${tt('tactic.formation','Formation')}:</strong> ${escapeHtml(tactic.formation || '—')}</div>
+              <div class="mb-2"><strong>${tt('nav.field_templates', 'Template terrain')}:</strong> ${escapeHtml(resolvedFieldTemplate?.name || '—')}</div>
+              <div class="mb-2"><strong>${tt('tactic.layout_mode', 'Disposition')}:</strong> ${escapeHtml(getFieldLayoutLabel(resolvedFieldLayout))}</div>
               <div class="mb-0"><strong>${tt('tactic.version','Version')}:</strong> ${escapeHtml(tactic.version || 1)}</div>
             </div>
           </div>

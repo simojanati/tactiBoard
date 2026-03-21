@@ -1,4 +1,5 @@
 import { activateMenu, bindFormSubmit, escapeHtml, fetchTacticsOptions, fetchTeamsOptions, initCrudPanel, setAppTitle, showAlert, supabase } from './common.js';
+import { notifyTeamEvent } from './notification-helpers.js';
 const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : fallback || key);
 
 setAppTitle(tt('page.quizzes', 'Quizzes'));
@@ -164,15 +165,15 @@ async function loadReferenceData() {
 }
 
 async function fetchQuizzes() {
-  tableBody.innerHTML = `<tr><td colspan="7" class="table-empty">${tt('common.loading','Chargement...')}</td></tr>`;
+  tableBody.innerHTML = `<tr><td colspan="8" class="table-empty">${tt('common.loading','Chargement...')}</td></tr>`;
   const { data, error } = await supabase
     .from('quizzes')
-    .select('id,title,description,status,team_id,tactic_id,created_at,teams(name),tactics(title),quiz_questions(id),quiz_attempts(id,score,total_questions,submitted_at)')
+    .select('id,title,description,status,team_id,tactic_id,time_limit_minutes,created_at,teams(name),tactics(title),quiz_questions(id),quiz_attempts(id,score,total_questions,submitted_at)')
     .order('created_at', { ascending: false });
   if (error) throw error;
   quizzesCache = data || [];
   if (!quizzesCache.length) {
-    tableBody.innerHTML = `<tr><td colspan="7" class="table-empty">${tt('quiz.none', 'Aucun quiz pour le moment.')}</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="8" class="table-empty">${tt('quiz.none', 'Aucun quiz pour le moment.')}</td></tr>`;
     renderAttemptsPlaceholder(tt('quiz.none_available', 'Aucun quiz disponible.'));
     return;
   }
@@ -185,6 +186,7 @@ async function fetchQuizzes() {
       <td>${escapeHtml(item.teams?.name || '—')}</td>
       <td>${escapeHtml(item.tactics?.title || '—')}</td>
       <td><span class="badge bg-label-info">${item.quiz_questions?.length || 0}</span></td>
+      <td>${item.time_limit_minutes ? `<span class="badge bg-label-warning"><i class="bx bx-time-five me-1"></i>${item.time_limit_minutes} min</span>` : '<span class="text-muted">—</span>'}</td>
       <td>
         <div class="fw-semibold">${attempts.length}</div>
         <small class="text-muted">${latestAttempt ? `Dernier: ${latestAttempt.score}/${latestAttempt.total_questions}` : tt('quiz.no_pass', 'Aucun passage')}</small>
@@ -212,6 +214,7 @@ async function loadQuizForEdit(id) {
   form.elements.team_id.value = data.team_id || '';
   await fetchTacticsOptions(tacticSelect, { teamId: data.team_id || '', includePlaceholder: true, selectedIds: data.tactic_id ? [data.tactic_id] : [] });
   form.elements.title.value = data.title || '';
+  form.elements.time_limit_minutes.value = data.time_limit_minutes || '';
   form.elements.status.value = data.status || 'draft';
   form.elements.description.value = data.description || '';
   submitLabel.textContent = tt('common.update', 'Mettre à jour');
@@ -232,10 +235,12 @@ async function saveQuiz(formData) {
     team_id: Number(formData.get('team_id')),
     tactic_id: formData.get('tactic_id') ? Number(formData.get('tactic_id')) : null,
     title: formData.get('title')?.trim(),
+    time_limit_minutes: formData.get('time_limit_minutes') ? Number(formData.get('time_limit_minutes')) : null,
     status: formData.get('status') || 'draft',
     description: formData.get('description')?.trim() || null
   };
   if (!payload.team_id || !payload.title) throw new Error(tt('quiz.required_fields', 'Complète les champs obligatoires.'));
+  if (payload.time_limit_minutes !== null && (!Number.isFinite(payload.time_limit_minutes) || payload.time_limit_minutes < 1)) throw new Error(tt('quiz.timer_invalid', 'Le timer doit être supérieur ou égal à 1 minute.'));
 
   let quizId = id;
   if (id) {

@@ -93,6 +93,7 @@
             <div class="col-md-3 mb-3"><label class="form-label">Équipe</label><select class="form-select" name="team_id" id="team-select" required></select></div>
             <div class="col-md-3 mb-3"><label class="form-label">Tactique liée</label><select class="form-select" name="tactic_id" id="tactic-select"><option value="">Aucune tactique</option></select></div>
             <div class="col-md-4 mb-3"><label class="form-label">Titre</label><input class="form-control" type="text" name="title" required /></div>
+            <div class="col-md-2 mb-3"><label class="form-label">Timer (min)</label><input class="form-control" type="number" min="1" step="1" name="time_limit_minutes" id="time-limit-input" placeholder="Ex: 15" /></div>
             <div class="col-md-2 mb-3"><label class="form-label">Statut</label><select class="form-select" name="status"><option value="draft">Brouillon</option><option value="active">Actif</option><option value="archived">Archivé</option></select></div>
             <div class="col-12 mb-3"><label class="form-label">Description</label><textarea class="form-control" name="description" rows="2" placeholder="Objectif du quiz, consignes, contexte..."></textarea></div>
           </div>
@@ -109,7 +110,7 @@
   <div class="col-12">
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center"><h5 class="mb-0">Liste des quizzes</h5><div class="card-tools"><button class="btn btn-sm btn-primary" id="toggle-form-btn"><i class="bx bx-plus me-1"></i>Ajouter</button><button class="btn btn-sm btn-outline-primary" id="refresh-btn">Actualiser</button></div></div>
-      <div class="table-responsive text-nowrap"><table class="table align-middle"><thead><tr><th>Titre</th><th>Équipe</th><th>Tactique</th><th>Questions</th><th>Attempts</th><th>Statut</th><th class="text-end">Actions</th></tr></thead><tbody id="quizzes-table"><tr><td colspan="7" class="table-empty">Chargement...</td></tr></tbody></table></div>
+      <div class="table-responsive text-nowrap"><table class="table align-middle"><thead><tr><th>Titre</th><th>Équipe</th><th>Tactique</th><th>Questions</th><th>Timer</th><th>Attempts</th><th>Statut</th><th class="text-end">Actions</th></tr></thead><tbody id="quizzes-table"><tr><td colspan="8" class="table-empty">Chargement...</td></tr></tbody></table></div>
     </div>
   </div>
   <div class="col-12">

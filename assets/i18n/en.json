@@ -6,6 +6,7 @@
   "nav.dashboard": "Dashboard",
   "nav.notifications": "Notifications",
   "nav.teams": "Teams",
+  "nav.field_templates": "Field templates",
   "nav.players": "Players",
   "nav.player_links": "Account links",
   "nav.my_team": "My team",
@@ -55,6 +56,7 @@
   "page.dashboard": "Dashboard",
   "page.notifications": "Notifications",
   "page.teams": "Teams",
+  "page.field_templates": "Field templates",
   "page.players": "Players",
   "page.coaches": "Coaches",
   "page.tactics": "Tactics",
@@ -779,5 +781,15 @@
   "dashboard.roles.download": "Download PDF",
   "dashboard.roles.none": "No roles",
   "dashboard.roles.available": "View and download your team's roles PDF document.",
-  "dashboard.roles.missing": "No roles document has been added for your team yet."
+  "dashboard.roles.missing": "No roles document has been added for your team yet.",
+  "quiz.timer": "Timer",
+  "quiz.timer_invalid": "The timer must be at least 1 minute.",
+  "take_quiz.no_timer": "No time limit for this quiz.",
+  "take_quiz.timer_running": "The quiz will be submitted automatically when time runs out.",
+  "take_quiz.time_over": "Time is up. Automatic submission in progress...",
+  "take_quiz.auto_submitted": "Attempt saved automatically when time ran out.",
+  "take_quiz.history_hidden_until_perfect": "Attempt details stay hidden until you reach 100%.",
+  "my_quizzes.results_hidden": "Results hidden until 100%",
+  "my_quizzes.continue": "Continue quiz",
+  "my_quizzes.no_timer": "No time limit"
 }

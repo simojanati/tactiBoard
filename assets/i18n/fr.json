@@ -6,6 +6,7 @@
   "nav.dashboard": "Tableau de bord",
   "nav.notifications": "Notifications",
   "nav.teams": "Équipes",
+  "nav.field_templates": "Templates terrain",
   "nav.players": "Joueuses",
   "nav.player_links": "Liaison comptes",
   "nav.my_team": "Mon équipe",
@@ -55,6 +56,7 @@
   "page.dashboard": "Tableau de bord",
   "page.notifications": "Notifications",
   "page.teams": "Équipes",
+  "page.field_templates": "Templates terrain",
   "page.players": "Joueuses",
   "page.coaches": "Coachs",
   "page.tactics": "Tactiques",
@@ -779,5 +781,15 @@
   "dashboard.roles.download": "Télécharger le PDF",
   "dashboard.roles.none": "Aucun rôle",
   "dashboard.roles.available": "Consulte et télécharge le document PDF des rôles de ton équipe.",
-  "dashboard.roles.missing": "Aucun document de rôles n'a encore été ajouté pour ton équipe."
+  "dashboard.roles.missing": "Aucun document de rôles n'a encore été ajouté pour ton équipe.",
+  "quiz.timer": "Timer",
+  "quiz.timer_invalid": "Le timer doit être supérieur ou égal à 1 minute.",
+  "take_quiz.no_timer": "Aucune limite de temps pour ce quiz.",
+  "take_quiz.timer_running": "Le quiz sera soumis automatiquement à la fin du temps.",
+  "take_quiz.time_over": "Temps écoulé. Envoi automatique en cours...",
+  "take_quiz.auto_submitted": "Tentative enregistrée automatiquement à la fin du temps.",
+  "take_quiz.history_hidden_until_perfect": "Le détail des tentatives restera masqué jusqu'à un score de 100%.",
+  "my_quizzes.results_hidden": "Résultats masqués jusqu’à 100%",
+  "my_quizzes.continue": "Continuer le quiz",
+  "my_quizzes.no_timer": "Sans limite de temps"
 }

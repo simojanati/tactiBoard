@@ -5,5 +5,6 @@ window.APP_CONFIG = {
   projectName: 'TactiBoard',
   defaultBucket: 'tactic-images',
   teamLogoBucket: 'team-logos',
-  teamRolesBucket: 'team-roles'
+  teamRolesBucket: 'team-roles',
+  fieldTemplatesBucket: 'field-templates'
 };

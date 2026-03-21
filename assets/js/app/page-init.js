@@ -10,6 +10,7 @@ const MENU_ITEMS = [
   { page: 'dashboard', href: 'index.html', icon: 'bx-home-circle', label: t('nav.dashboard') },
   { page: 'notifications', href: 'notifications.html', icon: 'bx-bell', label: t('nav.notifications') },
   { page: 'teams', href: 'teams.html', icon: 'bx-group', label: t('nav.teams') },
+  { page: 'field-templates', href: 'field-templates.html', icon: 'bx-landscape', label: t('nav.field_templates', 'Templates terrain') },
   { page: 'players', href: 'players.html', icon: 'bx-user', label: t('nav.players') },
   { page: 'player-links', href: 'player-links.html', icon: 'bx-link-alt', label: t('nav.player_links') },
   { page: 'users', href: 'users.html', icon: 'bx-user-check', label: t('nav.users') },
@@ -48,6 +49,17 @@ function normalizeMenu() {
 }
 
 
+
+
+function applyStoredActiveMenu() {
+  const activePage = window.__activeMenuPage;
+  if (!activePage) return;
+  document.querySelectorAll('[data-menu-page]').forEach(link => {
+    const item = link.closest('.menu-item');
+    if (!item) return;
+    item.classList.toggle('active', link.dataset.menuPage === activePage);
+  });
+}
 
 function updateMenuBadge(page, value) {
   const link = document.querySelector(`[data-menu-page="${page}"]`);
@@ -89,6 +101,7 @@ function hideMenuByRole(role) {
   
 const rules = {
     'teams.html': ['admin'],
+    'field-templates.html': ['admin'],
     'players.html': ['admin', 'coach'],
     'player-links.html': ['admin'],
     'users.html': ['admin'],
@@ -166,6 +179,95 @@ function watchPlayerMediaProtection() {
   });
   observer.observe(document.body, { childList: true, subtree: true });
   document.body.dataset.playerMediaProtected = '1';
+}
+
+
+function isSidebarCollapsed() {
+  return localStorage.getItem('tactiboard_sidebar_collapsed') === '1';
+}
+
+function applySidebarCollapsedState(collapsed) {
+  if (window.Helpers?.isSmallScreen?.()) return;
+  const root = document.documentElement;
+  const menu = document.getElementById('layout-menu');
+  const wrapper = document.querySelector('.layout-page');
+  root.classList.toggle('layout-menu-collapsed', collapsed);
+  root.classList.remove('layout-menu-hover');
+  menu?.classList.toggle('menu-collapsed', collapsed);
+  wrapper?.classList.toggle('sidebar-is-collapsed', collapsed);
+  try {
+    window.Helpers?._unbindMenuMouseEvents?.();
+    window.Helpers?._setMenuHoverState?.(false);
+    if (collapsed) {
+      window.Helpers?.setCollapsed?.(true, true);
+    } else {
+      window.Helpers?.setCollapsed?.(false, true);
+    }
+  } catch (e) {}
+  window.dispatchEvent(new Event('resize'));
+  const btn = document.getElementById('sidebar-collapse-toggle');
+  if (btn) {
+    btn.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
+    btn.title = collapsed ? t('nav.expand_menu', 'Agrandir le menu') : t('nav.collapse_menu', 'Réduire le menu');
+    btn.classList.toggle('is-collapsed', collapsed);
+    const icon = btn.querySelector('i');
+    if (icon) {
+      icon.className = `bx ${collapsed ? 'bx-chevrons-right' : 'bx-chevrons-left'}`;
+    }
+  }
+}
+
+function injectSidebarCollapseToggle() {
+  const brand = document.querySelector('#layout-menu .app-brand') || document.getElementById('layout-menu');
+  if (!brand || document.getElementById('sidebar-collapse-toggle') || window.Helpers?.isSmallScreen?.()) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'sidebar-collapse-toggle';
+  btn.className = 'd-none d-xl-inline-flex align-items-center justify-content-center';
+  btn.setAttribute('aria-label', t('nav.collapse_menu', 'Réduire le menu'));
+  btn.innerHTML = '<i class="bx bx-chevrons-left"></i>';
+  btn.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const current = document.documentElement.classList.contains('layout-menu-collapsed') || isSidebarCollapsed();
+    const next = !current;
+    localStorage.setItem('tactiboard_sidebar_collapsed', next ? '1' : '0');
+    applySidebarCollapsedState(next);
+  });
+  const mobileToggle = brand.querySelector('.layout-menu-toggle');
+  if (mobileToggle) {
+    brand.insertBefore(btn, mobileToggle);
+  } else {
+    brand.appendChild(btn);
+  }
+  applySidebarCollapsedState(isSidebarCollapsed());
+}
+
+function lockCollapsedMenuHover() {
+  const menu = document.getElementById('layout-menu');
+  if (!menu || menu.dataset.collapseHoverLock === '1') return;
+  const clearHoverState = () => {
+    if (!isSidebarCollapsed()) return;
+    document.documentElement.classList.remove('layout-menu-hover');
+    try {
+      window.Helpers?._setMenuHoverState?.(false);
+    } catch (e) {}
+  };
+  ['mouseenter', 'mousemove', 'mouseover'].forEach(eventName => {
+    menu.addEventListener(eventName, clearHoverState, true);
+  });
+  menu.dataset.collapseHoverLock = '1';
+}
+
+function refreshFooterBranding() {
+  const year = new Date().getFullYear();
+  const appName = window.APP_CONFIG?.projectName || 'TactiBoard';
+  document.querySelectorAll('.content-footer').forEach(footer => {
+    footer.innerHTML = `
+      <div class="container-xxl d-flex flex-wrap justify-content-center py-3 flex-md-row flex-column text-center">
+        <div class="mb-0 text-muted">© ${year} ${escapeHtml(appName)}. All rights reserved.</div>
+      </div>`;
+  });
 }
 
 function injectLanguageSwitcher() {
@@ -312,12 +414,14 @@ function syncNavbarPageTitle() {
 }
 
 normalizeMenu();
+applyStoredActiveMenu();
 syncNavbarPageTitle();
 
 const cachedAuth = readCachedAuth();
 if (cachedAuth?.role) {
   document.documentElement.dataset.userRole = cachedAuth.role;
   hideMenuByRole(cachedAuth.role);
+  applyStoredActiveMenu();
   applyCrudVisibility(cachedAuth.role);
   document.documentElement.dataset.roleReady = '1';
   if (cachedAuth.role === 'player') watchPlayerMediaProtection();
@@ -327,11 +431,15 @@ if (cachedAuth?.role) {
   const ctx = await requireAuthForPage();
   if (!ctx) return;
   hideMenuByRole(ctx.role);
+  applyStoredActiveMenu();
   await refreshTicketMenuBadge(ctx);
   applyCrudVisibility(ctx.role);
   await injectNotificationsBell(ctx);
   await injectUserBox(ctx);
   injectLanguageSwitcher();
+  injectSidebarCollapseToggle();
+  lockCollapsedMenuHover();
+  refreshFooterBranding();
   applyTranslations();
   document.documentElement.dataset.userRole = ctx.role;
   document.documentElement.dataset.roleReady = '1';
@@ -340,4 +448,4 @@ if (cachedAuth?.role) {
   watchPlayerMediaProtection();
 })();
 
-document.addEventListener('app:language-changed', () => { normalizeMenu(); hideMenuByRole(document.documentElement.dataset.userRole || readCachedAuth()?.role || 'player'); syncNavbarPageTitle(); applyTranslations(); });
+document.addEventListener('app:language-changed', () => { normalizeMenu(); applyStoredActiveMenu(); hideMenuByRole(document.documentElement.dataset.userRole || readCachedAuth()?.role || 'player'); syncNavbarPageTitle(); injectSidebarCollapseToggle(); refreshFooterBranding(); applyTranslations(); });

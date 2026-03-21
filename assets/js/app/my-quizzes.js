@@ -16,7 +16,7 @@ if (!ctx.teamId) {
   subtitleEl.textContent = tt('my_quizzes.subtitle', 'Révise les consignes tactiques et valide ta compréhension.');
 
   const [{ data: quizzes, error: quizzesError }, { data: attempts, error: attemptsError }] = await Promise.all([
-    supabase.from('quizzes').select('id,title,description,status,tactic_id,team_id,tactics(title),quiz_questions(id)').eq('team_id', ctx.teamId).eq('status', 'active').order('created_at', { ascending: false }),
+    supabase.from('quizzes').select('id,title,description,status,tactic_id,team_id,time_limit_minutes,tactics(title),quiz_questions(id)').eq('team_id', ctx.teamId).eq('status', 'active').order('created_at', { ascending: false }),
     supabase.from('quiz_attempts').select('id,quiz_id,score,total_questions,submitted_at').eq('profile_id', ctx.user.id).order('submitted_at', { ascending: false })
   ]);
   if (quizzesError) throw quizzesError;
@@ -43,13 +43,14 @@ if (!ctx.teamId) {
           <span class="badge bg-label-info">${item.quiz_questions?.length || 0} questions</span>
         </div>
         <div class="small text-muted mb-2">${escapeHtml(item.tactics?.title || tt('my_quizzes.general_team_quiz','Quiz général d’équipe'))}</div>
-        <p class="text-muted flex-grow-1 mb-3">${escapeHtml(item.description || tt('quiz.no_description', 'Aucune description.'))}</p>
+        <p class="text-muted flex-grow-1 mb-2">${escapeHtml(item.description || tt('quiz.no_description', 'Aucune description.'))}</p>
+        <div class="small text-muted mb-3">${item.time_limit_minutes ? `${tt('quiz.timer', 'Timer')}: ${item.time_limit_minutes} min` : tt('my_quizzes.no_timer', 'Sans limite de temps')}</div>
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="badge bg-label-${latest ? (isPerfect ? 'success' : scorePct >= 70 ? 'warning' : 'danger') : 'secondary'}">${latest ? `${tt('my_quizzes.last_score','Dernier score')}: ${latest.score}/${latest.total_questions}` : tt('quiz.never_taken', 'Jamais passé')}</span>
-          ${latest ? `<small class="text-muted">${scorePct}%</small>` : ''}
+          <span class="badge bg-label-${latest ? (isPerfect ? 'success' : 'secondary') : 'secondary'}">${latest ? (isPerfect ? `${tt('my_quizzes.last_score','Dernier score')}: ${latest.score}/${latest.total_questions}` : tt('my_quizzes.results_hidden', 'Résultats masqués jusqu’à 100%')) : tt('quiz.never_taken', 'Jamais passé')}</span>
+          ${latest && isPerfect ? `<small class="text-muted">${scorePct}%</small>` : ''}
         </div>
         <div class="small text-muted mb-3">${window.t ? window.t('misc.attempts', 'Attempts') : 'Attempts'}: ${attemptsCount}</div>
-        <a class="btn btn-outline-primary mt-auto" href="take-quiz.html?id=${item.id}">${isPerfect ? tt('quiz.review_attempt', 'Voir ma tentative') : tt('quiz.take', 'Passer le quiz')}</a>
+        <a class="btn btn-outline-primary mt-auto" href="take-quiz.html?id=${item.id}">${isPerfect ? tt('quiz.review_attempt', 'Voir ma tentative') : (attemptsCount ? tt('my_quizzes.continue', 'Continuer le quiz') : tt('quiz.take', 'Passer le quiz'))}</a>
       </div></div></div>`;
     }).join('')}</div>`;
   }
