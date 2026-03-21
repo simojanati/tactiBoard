@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="fr" class="light-style layout-menu-fixed" dir="ltr" data-theme="theme-default" data-assets-path="../assets/" data-template="vertical-menu-template-free">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
   <title>TactiBoard</title>
-  <meta name="description" content="Gestion tactique football américain" />
+  <meta name="description" content="Détail séance" />
   <link rel="icon" type="image/x-icon" href="../assets/img/favicon/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon/favicon-32x32.png" />
   <link rel="apple-touch-icon" href="../assets/img/favicon/apple-touch-icon.png" />
@@ -46,7 +45,6 @@
   <script src="../assets/vendor/js/helpers.js"></script>
   <script src="../assets/js/config.js"></script>
   <script src="../assets/js/app/config.local.js"></script>
-  
 </head>
 <body>
 <div class="layout-wrapper layout-content-navbar">
@@ -86,37 +84,19 @@
         </div>
         <div class="navbar-nav-right d-flex align-items-center w-100" id="navbar-collapse">
           <div class="navbar-nav align-items-center"><div class="nav-item d-none d-md-flex align-items-center"><span class="fw-semibold text-primary navbar-page-title"></span></div></div>
-          <ul class="navbar-nav flex-row align-items-center ms-auto">
-          </ul>
+          <ul class="navbar-nav flex-row align-items-center ms-auto"></ul>
         </div>
       </nav>
       <div class="content-wrapper">
         <div class="container-xxl flex-grow-1 container-p-y">
           <div id="page-alert"></div>
-
-<div class="row">
-  <div class="col-12 mb-4">
-    <div class="card form-panel-hidden form-panel-sticky" id="form-panel">
-      <div class="card-header d-flex justify-content-between align-items-center"><h5 class="mb-0" id="form-title">Ajouter une tactique</h5><button class="btn btn-sm btn-outline-secondary cancel-form-btn" type="button"><i class="bx bx-x me-1"></i>Fermer</button></div>
-      <div class="card-body"><form id="tactic-form" enctype="multipart/form-data"><input type="hidden" id="entity-id" name="id" /><div class="row"><div class="col-md-3 mb-3"><label class="form-label">Équipe</label><select class="form-select" name="team_id" id="team-select" required></select></div><div class="col-md-3 mb-3"><label class="form-label">Titre</label><input class="form-control" type="text" name="title" required /></div><div class="col-md-2 mb-3"><label class="form-label">Phase</label><select class="form-select" name="phase" required><option value="">Choisir</option><option value="offense">Offense</option><option value="defense">Defense</option><option value="special_teams">Special teams</option></select></div><div class="col-md-2 mb-3"><label class="form-label">Catégorie</label><input class="form-control" type="text" name="category" placeholder="run, pass, blitz..." /></div><div class="col-md-2 mb-3"><label class="form-label">Version</label><input class="form-control" type="number" name="version" value="1" min="1" /></div><div class="col-md-4 mb-3"><label class="form-label">Formation</label><input class="form-control" type="text" name="formation" /></div><div class="col-md-8 mb-3"><label class="form-label">Objectif</label><input class="form-control" type="text" name="objective" /></div><div class="col-md-6 mb-3"><label class="form-label">Image / schéma</label><input class="form-control" type="file" id="diagram-file" accept="image/*" /></div><div class="col-md-6 mb-3"><label class="form-label">Note de changement</label><input class="form-control" type="text" name="change_note" placeholder="Ex: nouvelle route WR / mise à jour blitz" /></div><div class="col-md-6 mb-3"><label class="form-label">Organisation des assignments</label><div class="assignment-builder-toolbar d-flex justify-content-between align-items-center mb-2"><small class="text-muted">Ajoute un poste et sa consigne.</small><button class="btn btn-sm btn-outline-primary" type="button" id="add-assignment-btn"><i class="bx bx-plus me-1"></i>Ajouter poste</button></div><div id="assignments-builder"></div></div><div class="col-md-6 mb-3"><label class="form-label">Notes générales</label><textarea class="form-control" name="notes" rows="4"></textarea></div><div class="col-md-6 mb-3"><label class="form-label">Notes coach</label><textarea class="form-control" name="coach_notes" rows="4" placeholder="Points d’attention, rappels, erreurs fréquentes..."></textarea></div></div><div class="d-flex gap-2"><button class="btn btn-primary" type="submit"><span id="submit-label">Enregistrer</span></button><button class="btn btn-outline-secondary cancel-form-btn" type="button">Annuler</button></div></form></div>
-    </div>
-  </div>
-  <div class="col-12 mb-4">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center"><h5 class="mb-0">Liste des tactiques</h5><div class="card-tools"><button class="btn btn-sm btn-primary" id="toggle-form-btn"><i class="bx bx-plus me-1"></i>Ajouter</button><button class="btn btn-sm btn-outline-primary" id="refresh-btn">Actualiser</button></div></div>
-      <div class="table-responsive text-nowrap"><table class="table align-middle"><thead><tr><th>Titre</th><th>Équipe</th><th>Phase</th><th>Catégorie</th><th>Formation</th><th>Version</th><th>Mise à jour</th><th>Image</th><th class="text-end">Actions</th></tr></thead><tbody id="tactics-table"><tr><td colspan="20" class="table-empty">Chargement...</td></tr></tbody></table></div>
-    </div>
-  </div>
-</div>
-
-<script type="module" src="../assets/js/app/page-init.js"></script>
-          <script type="module" src="../assets/js/app/tactics.js"></script>
-
+          <div id="session-detail-host"></div>
+          <script type="module" src="../assets/js/app/page-init.js"></script>
+          <script type="module" src="../assets/js/app/session-detail.js"></script>
         </div>
         <footer class="content-footer footer bg-footer-theme">
           <div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column">
-            <div class="mb-2 mb-md-0">Projet starter pour gestion tactique de football américain.</div>
-            <div><span class="footer-link me-3">Sneat + Supabase</span></div>
+            <div class="mb-2 mb-md-0">© 2026 TactiBoard. All rights reserved.</div>
           </div>
         </footer>
         <div class="content-backdrop fade"></div>

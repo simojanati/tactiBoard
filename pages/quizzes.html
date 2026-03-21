@@ -25,6 +25,18 @@
   } catch(e) {}
 })();
 </script>
+  
+<script>
+(function(){
+  try {
+    var mode = localStorage.getItem('tactiboard_theme');
+    var dark = mode === 'dark';
+    document.documentElement.classList.remove('light-style','dark-style');
+    document.documentElement.classList.add(dark ? 'dark-style' : 'light-style');
+    document.documentElement.dataset.themeMode = dark ? 'dark' : 'light';
+  } catch (e) {}
+})();
+</script>
   <link rel="stylesheet" href="../assets/vendor/fonts/boxicons.css" />
   <link rel="stylesheet" href="../assets/vendor/css/core.css" class="template-customizer-core-css" />
   <link rel="stylesheet" href="../assets/vendor/css/theme-default.css" class="template-customizer-theme-css" />

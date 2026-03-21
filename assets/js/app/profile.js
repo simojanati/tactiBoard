@@ -28,6 +28,57 @@ const profileHeightCm = document.getElementById('profile-height-cm');
 const profileWeightKg = document.getElementById('profile-weight-kg');
 const profileCoachRole = document.getElementById('profile-coach-role');
 const profileCoachEmail = document.getElementById('profile-coach-email');
+const passwordForm = document.getElementById('password-form');
+const currentPasswordInput = document.getElementById('current-password');
+const newPasswordInput = document.getElementById('new-password');
+const confirmPasswordInput = document.getElementById('confirm-password');
+
+function syncPasswordToggle(group) {
+  const input = group?.querySelector('.password-toggle-input');
+  const btn = group?.querySelector('.password-toggle-btn');
+  const icon = btn?.querySelector('i');
+  if (!input || !btn) return;
+  const visible = input.type === 'text';
+  btn.setAttribute('aria-label', visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+  btn.setAttribute('title', visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+  btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+  if (icon) icon.className = visible ? 'bx bx-show' : 'bx bx-hide';
+}
+
+function initPasswordToggles() {
+  document.querySelectorAll('.form-password-toggle').forEach(group => {
+    const input = group.querySelector('.password-toggle-input');
+    const btn = group.querySelector('.password-toggle-btn');
+    if (!input || !btn) return;
+    syncPasswordToggle(group);
+    if (btn.dataset.toggleBound === '1') return;
+    btn.dataset.toggleBound = '1';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      input.type = input.type === 'password' ? 'text' : 'password';
+      syncPasswordToggle(group);
+      input.focus({ preventScroll: true });
+      const len = input.value?.length || 0;
+      try { input.setSelectionRange(len, len); } catch {}
+    });
+  });
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.password-toggle-btn');
+  if (!btn) return;
+  const group = btn.closest('.form-password-toggle');
+  const input = group?.querySelector('.password-toggle-input');
+  if (!group || !input) return;
+  e.preventDefault();
+  e.stopPropagation();
+  input.type = input.type === 'password' ? 'text' : 'password';
+  syncPasswordToggle(group);
+  input.focus({ preventScroll: true });
+  const len = input.value?.length || 0;
+  try { input.setSelectionRange(len, len); } catch {}
+}, true);
 
 function tt(key, fallback) {
   return window.t ? window.t(key, fallback) : fallback;
@@ -112,6 +163,7 @@ async function loadLinkedRoleData() {
     ctx.profile = profile || ctx.profile;
     await loadLinkedRoleData();
     paintProfile();
+    initPasswordToggles();
   } catch (err) {
     console.error(err);
     showAlert(err.message || tt('profile.load_failed','Impossible de charger le profil.'), 'danger');
@@ -219,5 +271,57 @@ avatarForm?.addEventListener('submit', async (e) => {
   } finally {
     btn.disabled = false;
     btn.innerHTML = prev;
+  }
+});
+
+
+passwordForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('password-save-btn');
+  const previous = btn?.innerHTML || '';
+  try {
+    const currentPassword = currentPasswordInput?.value || '';
+    const newPassword = newPasswordInput?.value || '';
+    const confirmPassword = confirmPasswordInput?.value || '';
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      throw new Error(tt('profile.password_fill_all', 'Remplis tous les champs du mot de passe.'));
+    }
+    if (newPassword.length < 6) {
+      throw new Error(tt('profile.password_min_length', 'Le nouveau mot de passe doit contenir au moins 6 caractères.'));
+    }
+    if (newPassword !== confirmPassword) {
+      throw new Error(tt('profile.password_mismatch', 'La confirmation du nouveau mot de passe ne correspond pas.'));
+    }
+    if (currentPassword === newPassword) {
+      throw new Error(tt("profile.password_same", "Le nouveau mot de passe doit être différent de l'ancien."));
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${tt('profile.password_updating', 'Mise à jour...')}`;
+    }
+
+    const email = ctx?.user?.email || ctx?.profile?.email || '';
+    if (!email) throw new Error(tt('profile.password_no_email', 'Email utilisateur introuvable.'));
+
+    const { error: verifyError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+    if (verifyError) {
+      throw new Error(tt('profile.password_current_invalid', 'Le mot de passe actuel est incorrect.'));
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    if (updateError) throw updateError;
+
+    passwordForm.reset();
+    showAlert(tt('profile.password_updated', 'Mot de passe mis à jour avec succès.'));
+  } catch (err) {
+    console.error(err);
+    showAlert(err.message || tt('profile.password_update_failed', 'Impossible de mettre à jour le mot de passe.'), 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = previous;
+    }
   }
 });

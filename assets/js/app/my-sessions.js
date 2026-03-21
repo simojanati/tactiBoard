@@ -13,7 +13,7 @@ if (!ctx.teamId) {
   const bundle = await fetchTeamBundle(ctx.teamId);
   document.getElementById('portal-title').textContent = `${tt('my_sessions.title','Mes séances')} · ${ctx.teamName || ''}`;
   document.getElementById('portal-subtitle').textContent = tt('my_sessions.subtitle','Séances planifiées pour ton équipe.');
-  renderSimpleTable(host, [tt('common.title','Titre'), tt('common.date','Date'), tt('common.location','Lieu')], bundle.sessions.map(s => `<tr><td><strong>${escapeHtml(s.title || '')}</strong></td><td>${sessionLabel(s)}</td><td>${escapeHtml(s.location || '')}</td></tr>`).join(''), tt('my_sessions.none_available','Aucune séance planifiée.'));
+  renderSimpleTable(host, [tt('common.title','Titre'), tt('common.date','Date'), tt('common.location','Lieu'), 'Action'], bundle.sessions.map(s => `<tr><td><a href="session-detail.html?id=${s.id}" class="fw-semibold text-decoration-none">${escapeHtml(s.title || '')}</a></td><td>${sessionLabel(s)}</td><td>${escapeHtml(s.location || '')}</td><td><a href="session-detail.html?id=${s.id}" class="btn btn-sm btn-outline-secondary">Détail</a></td></tr>`).join(''), tt('my_sessions.none_available','Aucune séance planifiée.'));
 }
 
 document.addEventListener('app:language-changed', () => { try { location.reload(); } catch (e) { console.warn(e); } });

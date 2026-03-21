@@ -14,6 +14,18 @@
   <link rel="stylesheet" href="../assets/css/demo.css" />
   <link rel="stylesheet" href="../assets/css/app.css" />
   <script src="../assets/vendor/js/helpers.js"></script>
+  
+<script>
+(function(){
+  try {
+    var mode = localStorage.getItem('tactiboard_theme');
+    var dark = mode === 'dark';
+    document.documentElement.classList.remove('light-style','dark-style');
+    document.documentElement.classList.add(dark ? 'dark-style' : 'light-style');
+    document.documentElement.dataset.themeMode = dark ? 'dark' : 'light';
+  } catch (e) {}
+})();
+</script>
   <script src="../assets/js/config.js"></script>
   <script src="../assets/js/app/config.local.js"></script>
 </head>
@@ -146,6 +158,42 @@
                     </div>
                     <div class="d-flex justify-content-end mt-3">
                       <button class="btn btn-primary" type="submit" id="profile-save-btn"><i class="bx bx-save me-1"></i>Enregistrer</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0" data-i18n="profile.change_password">Changer le mot de passe</h5>
+                </div>
+                <div class="card-body">
+                  <form id="password-form">
+                    <div class="row g-3">
+                      <div class="col-md-12">
+                        <label class="form-label" for="current-password" data-i18n="profile.current_password">Mot de passe actuel</label>
+                        <div class="input-group form-password-toggle">
+                          <input class="form-control password-toggle-input" id="current-password" name="current_password" type="password" autocomplete="current-password" required>
+                          <button class="input-group-text password-toggle-btn" type="button" tabindex="-1" aria-label="Afficher le mot de passe"><i class="bx bx-hide"></i></button>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label" for="new-password" data-i18n="profile.new_password">Nouveau mot de passe</label>
+                        <div class="input-group form-password-toggle">
+                          <input class="form-control password-toggle-input" id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="6" required>
+                          <button class="input-group-text password-toggle-btn" type="button" tabindex="-1" aria-label="Afficher le mot de passe"><i class="bx bx-hide"></i></button>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label" for="confirm-password" data-i18n="profile.confirm_password">Confirmer le nouveau mot de passe</label>
+                        <div class="input-group form-password-toggle">
+                          <input class="form-control password-toggle-input" id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="6" required>
+                          <button class="input-group-text password-toggle-btn" type="button" tabindex="-1" aria-label="Afficher le mot de passe"><i class="bx bx-hide"></i></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-3">
+                      <button class="btn btn-primary" type="submit" id="password-save-btn"><i class="bx bx-lock-alt me-1"></i><span data-i18n="profile.change_password_action">Changer le mot de passe</span></button>
                     </div>
                   </form>
                 </div>

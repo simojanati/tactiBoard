@@ -42,4 +42,16 @@ body{background:#fff;padding:24px;color:var(--gp-text);font-family:Inter,Arial,s
 <div id="host">Chargement...</div>
 </div>
 <script type="module" src="../assets/js/app/match-gameplan-print.js"></script>
+  
+<script>
+(function(){
+  try {
+    var mode = localStorage.getItem('tactiboard_theme');
+    var dark = mode === 'dark';
+    document.documentElement.classList.remove('light-style','dark-style');
+    document.documentElement.classList.add(dark ? 'dark-style' : 'light-style');
+    document.documentElement.dataset.themeMode = dark ? 'dark' : 'light';
+  } catch (e) {}
+})();
+</script>
 </body></html>

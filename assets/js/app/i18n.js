@@ -146,7 +146,10 @@ function applyPageSpecifics() {
     'take-quiz.html': 'page.take_quiz',
     'tactical-board.html': 'page.tactical_board',
     'quizzes.html': 'page.quizzes',
-    'match-gameplan-print.html': 'page.match_gameplan_print'
+    'match-gameplan-print.html': 'page.match_gameplan_print',
+    'users.html': 'page.users',
+    'field-templates.html': 'page.field_templates',
+    'session-detail.html': 'page.session_detail'
   };
   const key = pageTitles[path];
   if (key) {

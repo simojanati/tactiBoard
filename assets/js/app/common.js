@@ -2,11 +2,55 @@ import { supabase } from './auth.js';
 
 const cfg = window.APP_CONFIG;
 
-function tt(key, fallback='') {
+export function tt(key, fallback='') {
   return window.t ? window.t(key, fallback) : fallback;
 }
 
 export { supabase };
+
+
+const THEME_STORAGE_KEY = 'tactiboard_theme';
+
+
+function updateBrandLogos(mode = getThemeMode()) {
+  const file = mode === 'dark' ? 'logo-horizontal-dark.png' : 'logo-horizontal.png';
+  document.querySelectorAll('img.brand-logo-horizontal').forEach(img => {
+    const src = img.getAttribute('src') || '';
+    if (!src) return;
+    const next = src.replace(/logo-horizontal(?:-dark)?\.png(?:\?.*)?$/i, file);
+    if (next !== src) img.setAttribute('src', next);
+  });
+}
+
+export function getThemeMode() {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  return saved === 'dark' ? 'dark' : 'light';
+}
+
+export function applyThemeMode(mode = 'light') {
+  const resolved = mode === 'dark' ? 'dark' : 'light';
+  const html = document.documentElement;
+  html.classList.remove('light-style', 'dark-style');
+  html.classList.add(resolved === 'dark' ? 'dark-style' : 'light-style');
+  html.dataset.themeMode = resolved;
+  document.body?.classList.toggle('dark-mode', resolved === 'dark');
+  document.body?.classList.toggle('light-mode', resolved !== 'dark');
+  updateBrandLogos(resolved);
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, resolved);
+  } catch (e) {}
+  document.dispatchEvent(new CustomEvent('app:theme-changed', { detail: { mode: resolved } }));
+  return resolved;
+}
+
+export function setThemeMode(mode = 'light') {
+  return applyThemeMode(mode);
+}
+
+export function toggleThemeMode() {
+  return applyThemeMode(getThemeMode() === 'dark' ? 'light' : 'dark');
+}
+
 
 export function setAppTitle(suffix = '') {
   const localSuffix = window.t ? (window.t(window.__i18nKeyForText?.(suffix) || '', suffix) || suffix) : suffix;
@@ -574,4 +618,11 @@ export async function uploadFieldTemplateImage(file, templateId, variant) {
     path,
     filename: file.name || `${safeVariant}.${ext}`
   };
+}
+
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => updateBrandLogos(getThemeMode()));
+} else {
+  updateBrandLogos(getThemeMode());
 }

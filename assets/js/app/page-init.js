@@ -1,7 +1,7 @@
 
 import { ROLE_LABELS, canAdmin, canEdit, firstAllowedPage, getUserContext, readCachedAuth, requireAuthForPage, signOut, supabase } from './auth.js';
 import { applyTranslations, initI18n, setLanguage, t, getLanguage } from './i18n.js';
-import { escapeHtml } from './common.js';
+import { escapeHtml, getThemeMode, setThemeMode } from './common.js';
 
 await initI18n();
 
@@ -291,6 +291,28 @@ function injectLanguageSwitcher() {
   if (userBox) navbar.insertBefore(box, userBox); else navbar.appendChild(box);
 }
 
+
+function injectThemeSwitcher() {
+  const navbar = document.getElementById('navbar-collapse');
+  if (!navbar || document.getElementById('theme-switcher')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'theme-switcher';
+  wrap.className = 'navbar-quick-action theme-switcher-wrap';
+  const render = () => {
+    const mode = getThemeMode();
+    const isDark = mode === 'dark';
+    const title = escapeHtml(isDark ? t('theme.switch_to_light', 'Passer au mode clair') : t('theme.switch_to_dark', 'Passer au mode sombre'));
+    wrap.innerHTML = `<button type="button" class="btn btn-outline-secondary theme-switcher-btn" aria-pressed="${isDark ? 'true' : 'false'}" aria-label="${title}" title="${title}"><i class="bx ${isDark ? 'bx-sun' : 'bx-moon'}"></i></button>`;
+    wrap.querySelector('button')?.addEventListener('click', () => setThemeMode(isDark ? 'light' : 'dark'));
+  };
+  render();
+  document.addEventListener('app:theme-changed', render);
+  const languageSwitcher = document.getElementById('language-switcher');
+  const userBox = document.getElementById('user-box');
+  const anchor = languageSwitcher || userBox;
+  if (anchor) navbar.insertBefore(wrap, anchor); else navbar.appendChild(wrap);
+}
+
 function applyCrudVisibility(role) {
   const editable = canEdit(role);
   const admin = canAdmin(role);
@@ -437,6 +459,7 @@ if (cachedAuth?.role) {
   await injectNotificationsBell(ctx);
   await injectUserBox(ctx);
   injectLanguageSwitcher();
+  injectThemeSwitcher();
   injectSidebarCollapseToggle();
   lockCollapsedMenuHover();
   refreshFooterBranding();
@@ -448,4 +471,4 @@ if (cachedAuth?.role) {
   watchPlayerMediaProtection();
 })();
 
-document.addEventListener('app:language-changed', () => { normalizeMenu(); applyStoredActiveMenu(); hideMenuByRole(document.documentElement.dataset.userRole || readCachedAuth()?.role || 'player'); syncNavbarPageTitle(); injectSidebarCollapseToggle(); refreshFooterBranding(); applyTranslations(); });
+document.addEventListener('app:language-changed', () => { normalizeMenu(); applyStoredActiveMenu(); hideMenuByRole(document.documentElement.dataset.userRole || readCachedAuth()?.role || 'player'); syncNavbarPageTitle(); injectSidebarCollapseToggle(); refreshFooterBranding(); applyTranslations(); injectThemeSwitcher(); });

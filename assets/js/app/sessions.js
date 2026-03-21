@@ -11,6 +11,14 @@ const form=document.getElementById('entity-form');
 const idInput=document.getElementById('entity-id');
 const submitLabel=document.getElementById('submit-label');
 const panel=initCrudPanel({ addTitle:'Ajouter une séance', editTitle:'Modifier séance' });
+const formCardBody = form?.closest('.card-body');
+if (formCardBody && !document.getElementById('session-planning-helper')) {
+  const helper = document.createElement('div');
+  helper.id = 'session-planning-helper';
+  helper.className = 'alert alert-info py-2 small';
+  helper.innerHTML = '<i class="bx bx-info-circle me-1"></i>Le planning détaillé de la séance se gère après enregistrement, depuis le bouton <strong>Détail</strong>.';
+  formCardBody.insertBefore(helper, form);
+}
 const ctx = await getUserContext();
 const isEditor = canEdit(ctx.role);
 
@@ -38,7 +46,7 @@ async function loadRows(){
     bySession.set(link.session_id, arr);
   });
 
-  tbody.innerHTML=data.map(row=>`<tr><td>${escapeHtml(row.title||'')}</td><td>${escapeHtml(row.teams?.name||'—')}</td><td>${formatDate(row.session_date)}</td><td>${escapeHtml(row.location||'')}</td><td>${escapeHtml((bySession.get(row.id) || []).slice(0,3).join(', ') || '—')}</td><td>${escapeHtml(row.notes||'')}</td><td class="text-end actions-cell">${isEditor ? `<button class=\"btn btn-sm btn-outline-primary edit-btn\" data-id=\"${row.id}\">Modifier</button><button class=\"btn btn-sm btn-outline-danger delete-btn\" data-id=\"${row.id}\" data-label=\"${escapeHtml(row.title||'')}\">Supprimer</button>` : '<span class=\"text-muted\">Lecture seule</span>'}</td></tr>`).join('');
+  tbody.innerHTML=data.map(row=>`<tr><td><a href="session-detail.html?id=${row.id}" class="fw-semibold text-decoration-none">${escapeHtml(row.title||'')}</a></td><td>${escapeHtml(row.teams?.name||'—')}</td><td>${formatDate(row.session_date)}</td><td>${escapeHtml(row.location||'')}</td><td>${escapeHtml((bySession.get(row.id) || []).slice(0,3).join(', ') || '—')}</td><td>${escapeHtml(row.notes||'')}</td><td class="text-end actions-cell"><a class="btn btn-sm btn-outline-secondary" href="session-detail.html?id=${row.id}">Détail</a>${isEditor ? `<button class=\"btn btn-sm btn-outline-primary edit-btn\" data-id=\"${row.id}\">Modifier</button><button class=\"btn btn-sm btn-outline-danger delete-btn\" data-id=\"${row.id}\" data-label=\"${escapeHtml(row.title||'')}\">Supprimer</button>` : ''}</td></tr>`).join('');
 }
 
 async function fillForm(row){

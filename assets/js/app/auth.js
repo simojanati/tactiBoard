@@ -20,6 +20,7 @@ export const ROLE_PAGE_RULES = {
   'tactical-board.html': ['admin','coach'],
   'tactic-detail.html': ['admin','coach','player'],
   'sessions.html': ['admin','coach'],
+  'session-detail.html': ['admin','coach','player'],
   'matches.html': ['admin','coach'],
   'match-detail.html': ['admin','coach','player'],
   'login.html': ['guest'],

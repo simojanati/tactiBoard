@@ -1,5 +1,5 @@
 import { firstAllowedPage, getSession, signInWithPassword, signUpWithPassword } from './auth.js';
-import { clearAlert, fetchTeamsOptions, showAlert, supabase } from './common.js';
+import { clearAlert, fetchTeamsOptions, showAlert, supabase, getThemeMode, setThemeMode } from './common.js';
 import { initI18n, t, setLanguage } from './i18n.js';
 
 await initI18n();
@@ -191,3 +191,24 @@ redirectIfLoggedIn();
 if (registerTeamSelect) {
   try { await fetchTeamsOptions(registerTeamSelect, true); } catch (e) { console.warn('Unable to load teams for signup', e); }
 }
+
+
+(function injectLoginThemeSwitcher(){
+  const box = document.createElement('div');
+  box.className = 'position-fixed top-0 end-0 p-3 d-flex gap-2 auth-floating-controls';
+  const renderThemeButton = () => {
+    const mode = getThemeMode();
+    const isDark = mode === 'dark';
+    return `<button type="button" class="btn btn-sm btn-outline-secondary auth-theme-toggle" title="${isDark ? t('theme.switch_to_light','Passer au mode clair') : t('theme.switch_to_dark','Passer au mode sombre')}"><i class="bx ${isDark ? 'bx-sun' : 'bx-moon'}"></i></button>`;
+  };
+  box.innerHTML = `${renderThemeButton()}<select class="form-select form-select-sm" style="width:88px"><option value="fr" ${localStorage.getItem('tactiboard_lang')==='en'?'':'selected'}>${t('lang.fr')}</option><option value="en" ${localStorage.getItem('tactiboard_lang')==='en'?'selected':''}>${t('lang.en')}</option></select>`;
+  box.querySelector('select').addEventListener('change',e=>setLanguage(e.target.value));
+  box.querySelector('.auth-theme-toggle')?.addEventListener('click',()=>setThemeMode(getThemeMode()==='dark'?'light':'dark'));
+  document.addEventListener('app:theme-changed', () => {
+    const next = renderThemeButton();
+    const holder = box.querySelector('.auth-theme-toggle');
+    if (holder) holder.outerHTML = next;
+    box.querySelector('.auth-theme-toggle')?.addEventListener('click',()=>setThemeMode(getThemeMode()==='dark'?'light':'dark'));
+  });
+  document.body.appendChild(box);
+})();

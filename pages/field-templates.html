@@ -12,6 +12,18 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
   <script>(function(){try{var raw=localStorage.getItem('pbm_auth_cache');if(!raw)return;var data=JSON.parse(raw);if(data&&data.role){document.documentElement.dataset.userRole=data.role;document.documentElement.dataset.roleReady='1';}}catch(e){}})();</script>
+  
+<script>
+(function(){
+  try {
+    var mode = localStorage.getItem('tactiboard_theme');
+    var dark = mode === 'dark';
+    document.documentElement.classList.remove('light-style','dark-style');
+    document.documentElement.classList.add(dark ? 'dark-style' : 'light-style');
+    document.documentElement.dataset.themeMode = dark ? 'dark' : 'light';
+  } catch (e) {}
+})();
+</script>
   <link rel="stylesheet" href="../assets/vendor/fonts/boxicons.css" />
   <link rel="stylesheet" href="../assets/vendor/css/core.css" class="template-customizer-core-css" />
   <link rel="stylesheet" href="../assets/vendor/css/theme-default.css" class="template-customizer-theme-css" />
