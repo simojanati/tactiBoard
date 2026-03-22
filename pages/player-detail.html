@@ -1,11 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="fr" class="light-style layout-menu-fixed" dir="ltr" data-theme="theme-default" data-assets-path="../assets/" data-template="vertical-menu-template-free">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
   <title>TactiBoard</title>
-  <meta name="description" content="Gestion tactique football américain" />
+  <meta name="description" content="Détail joueuse" />
   <link rel="icon" type="image/x-icon" href="../assets/img/favicon/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/img/favicon/favicon-32x32.png" />
   <link rel="apple-touch-icon" href="../assets/img/favicon/apple-touch-icon.png" />
@@ -25,7 +24,6 @@
   } catch(e) {}
 })();
 </script>
-  
 <script>
 (function(){
   try {
@@ -46,7 +44,6 @@
   <script src="../assets/vendor/js/helpers.js"></script>
   <script src="../assets/js/config.js"></script>
   <script src="../assets/js/app/config.local.js"></script>
-  
 </head>
 <body>
 <div class="layout-wrapper layout-content-navbar">
@@ -86,32 +83,32 @@
         </div>
         <div class="navbar-nav-right d-flex align-items-center w-100" id="navbar-collapse">
           <div class="navbar-nav align-items-center"><div class="nav-item d-none d-md-flex align-items-center"><span class="fw-semibold text-primary navbar-page-title"></span></div></div>
-          <ul class="navbar-nav flex-row align-items-center ms-auto">
-          </ul>
+          <ul class="navbar-nav flex-row align-items-center ms-auto"></ul>
         </div>
       </nav>
       <div class="content-wrapper">
         <div class="container-xxl flex-grow-1 container-p-y">
           <div id="page-alert"></div>
-
-<div class="row">
-  <div class="col-12 mb-4">
-    <div class="card form-panel-hidden form-panel-sticky" id="form-panel">
-      <div class="card-header d-flex justify-content-between align-items-center"><h5 class="mb-0" id="form-title">Ajouter une séance</h5><button class="btn btn-sm btn-outline-secondary cancel-form-btn" type="button"><i class="bx bx-x me-1"></i>Fermer</button></div>
-      <div class="card-body"><form id="entity-form"><input type="hidden" id="entity-id" name="id" /><div class="row"><div class="col-md-3 mb-3"><label class="form-label">Équipe</label><select class="form-select" name="team_id" id="team-select" required></select></div><div class="col-md-3 mb-3"><label class="form-label">Titre</label><input class="form-control" type="text" name="title" required /></div><div class="col-md-2 mb-3"><label class="form-label">Type</label><select class="form-select" name="session_type" required><option value="practice">Pratique</option><option value="theory">Théorie</option></select></div><div class="col-md-2 mb-3"><label class="form-label">Date</label><input class="form-control" type="date" name="session_date" required /></div><div class="col-md-1 mb-3"><label class="form-label">Début</label><input class="form-control" type="time" name="start_time" /></div><div class="col-md-1 mb-3"><label class="form-label">Fin</label><input class="form-control" type="time" name="end_time" /></div><div class="col-md-4 mb-3"><label class="form-label">Lieu</label><input class="form-control" type="text" name="location" /></div><div class="col-md-8 mb-3"><label class="form-label">Notes</label><textarea class="form-control" name="notes" rows="3"></textarea></div><div class="col-12 mb-3"><label class="form-label">Tactiques liées</label><select class="form-select" id="session-tactics-select" multiple size="8"></select><div class="form-text">Maintiens Ctrl (ou Cmd sur Mac) pour sélectionner plusieurs tactiques.</div></div></div><div class="d-flex gap-2"><button class="btn btn-primary" type="submit"><span id="submit-label">Enregistrer</span></button><button class="btn btn-outline-secondary cancel-form-btn" type="button">Annuler</button></div></form></div>
-    </div>
-  </div>
-  <div class="col-12 mb-4">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center"><h5 class="mb-0">Liste des séances</h5><div class="card-tools"><button class="btn btn-sm btn-primary" id="toggle-form-btn"><i class="bx bx-plus me-1"></i>Ajouter</button><button class="btn btn-sm btn-outline-primary" id="refresh-btn">Actualiser</button></div></div>
-      <div class="table-responsive text-nowrap"><table class="table align-middle"><thead><tr><th>Titre</th><th>Type</th><th>Équipe</th><th>Date</th><th>Lieu</th><th>Tactiques liées</th><th>Notes</th><th class="text-end">Actions</th></tr></thead><tbody id="entity-table"><tr><td colspan="20" class="table-empty">Chargement...</td></tr></tbody></table></div>
-    </div>
-  </div>
-</div>
-
-<script type="module" src="../assets/js/app/page-init.js"></script>
-          <script type="module" src="../assets/js/app/sessions.js"></script>
-
+          <div class="row">
+            <div class="col-12 mb-4">
+              <div class="card app-hero-card">
+                <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                  <div>
+                    <div class="small text-muted mb-1">Joueuse</div>
+                    <h4 class="card-title mb-1" id="player-detail-title">Chargement...</h4>
+                    <p class="mb-0" id="player-detail-subtitle">Chargement...</p>
+                  </div>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <a class="btn btn-outline-secondary" href="players.html" id="back-to-players"><i class="bx bx-arrow-back me-1"></i>Retour joueurs</a>
+                    <a class="btn btn-outline-secondary d-none" href="my-team.html" id="back-to-team"><i class="bx bx-arrow-back me-1"></i>Retour équipe</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12" id="player-detail-content"></div>
+          </div>
+          <script type="module" src="../assets/js/app/page-init.js"></script>
+          <script type="module" src="../assets/js/app/player-detail.js"></script>
         </div>
         <footer class="content-footer footer bg-footer-theme">
           <div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column">

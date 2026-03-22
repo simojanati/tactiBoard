@@ -31,10 +31,10 @@ teamSelect.addEventListener('change', async () => {
 });
 
 async function loadRows(){
-  tbody.innerHTML=`<tr><td colspan="7" class="table-empty">Chargement...</td></tr>`;
-  const {data,error}=await supabase.from('sessions').select('id,team_id,teams(name),title,session_date,start_time,end_time,location,notes').order('id',{ascending:false});
+  tbody.innerHTML=`<tr><td colspan="8" class="table-empty">Chargement...</td></tr>`;
+  const {data,error}=await supabase.from('sessions').select('id,team_id,teams(name),title,session_type,session_date,start_time,end_time,location,notes').order('id',{ascending:false});
   if(error) throw error;
-  if(!data.length){tbody.innerHTML=`<tr><td colspan="7" class="table-empty">Aucune donnée.</td></tr>`; return;}
+  if(!data.length){tbody.innerHTML=`<tr><td colspan="8" class="table-empty">Aucune donnée.</td></tr>`; return;}
 
   const sessionIds = data.map(row => row.id);
   const { data: links, error: linksError } = await supabase.from('session_tactics').select('session_id, tactics(title)').in('session_id', sessionIds);
@@ -46,12 +46,13 @@ async function loadRows(){
     bySession.set(link.session_id, arr);
   });
 
-  tbody.innerHTML=data.map(row=>`<tr><td><a href="session-detail.html?id=${row.id}" class="fw-semibold text-decoration-none">${escapeHtml(row.title||'')}</a></td><td>${escapeHtml(row.teams?.name||'—')}</td><td>${formatDate(row.session_date)}</td><td>${escapeHtml(row.location||'')}</td><td>${escapeHtml((bySession.get(row.id) || []).slice(0,3).join(', ') || '—')}</td><td>${escapeHtml(row.notes||'')}</td><td class="text-end actions-cell"><a class="btn btn-sm btn-outline-secondary" href="session-detail.html?id=${row.id}">Détail</a>${isEditor ? `<button class=\"btn btn-sm btn-outline-primary edit-btn\" data-id=\"${row.id}\">Modifier</button><button class=\"btn btn-sm btn-outline-danger delete-btn\" data-id=\"${row.id}\" data-label=\"${escapeHtml(row.title||'')}\">Supprimer</button>` : ''}</td></tr>`).join('');
+  tbody.innerHTML=data.map(row=>`<tr><td><a href="session-detail.html?id=${row.id}" class="fw-semibold text-decoration-none">${escapeHtml(row.title||'')}</a></td><td><span class="badge ${row.session_type === 'theory' ? 'bg-label-info' : 'bg-label-primary'}">${row.session_type === 'theory' ? 'Théorie' : 'Pratique'}</span></td><td>${escapeHtml(row.teams?.name||'—')}</td><td>${formatDate(row.session_date)}</td><td>${escapeHtml(row.location||'')}</td><td>${escapeHtml((bySession.get(row.id) || []).slice(0,3).join(', ') || '—')}</td><td>${escapeHtml(row.notes||'')}</td><td class="text-end actions-cell"><a class="btn btn-sm btn-outline-secondary" href="session-detail.html?id=${row.id}">Détail</a>${isEditor ? `<button class=\"btn btn-sm btn-outline-primary edit-btn\" data-id=\"${row.id}\">Modifier</button><button class=\"btn btn-sm btn-outline-danger delete-btn\" data-id=\"${row.id}\" data-label=\"${escapeHtml(row.title||'')}\">Supprimer</button>` : ''}</td></tr>`).join('');
 }
 
 async function fillForm(row){
   form.team_id.value=row.team_id??'';
   form.title.value=row.title||'';
+  form.session_type.value=row.session_type||'practice';
   form.session_date.value=row.session_date||'';
   form.start_time.value=row.start_time||'';
   form.end_time.value=row.end_time||'';
@@ -81,6 +82,7 @@ document.getElementById('refresh-btn').addEventListener('click',loadRows);
 tbody.addEventListener('click',async e=>{ const editBtn=e.target.closest('.edit-btn'); const deleteBtn=e.target.closest('.delete-btn'); if(editBtn && isEditor) fillForm(await getRow(editBtn.dataset.id)); if(deleteBtn && isEditor){ if(!confirm(`Supprimer ${deleteBtn.dataset.label} ?`)) return; await removeRow(deleteBtn.dataset.id); showAlert('Séance supprimée avec succès.'); await loadRows(); } });
 if (isEditor) bindFormSubmit('entity-form', async fd=>{
   const payload=Object.fromEntries(fd.entries());
+  payload.session_type = payload.session_type || 'practice';
   const id=payload.id;
   delete payload.id;
   const tacticIds = tacticsSelect ? [...tacticsSelect.selectedOptions].map(opt => Number(opt.value)) : [];

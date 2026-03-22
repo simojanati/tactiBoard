@@ -81,6 +81,7 @@
                   <div class="text-muted mb-3" id="profile-role">—</div>
                   <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
                     <span class="badge bg-label-primary" id="profile-team-badge">Aucune équipe</span>
+                    <span class="badge bg-label-warning d-none" id="profile-points-badge">0 pts</span>
                     <span class="badge bg-label-secondary" id="profile-email-badge">—</span>
                   </div>
                   <form id="avatar-form" class="text-start">
@@ -160,6 +161,23 @@
                       <button class="btn btn-primary" type="submit" id="profile-save-btn"><i class="bx bx-save me-1"></i>Enregistrer</button>
                     </div>
                   </form>
+                </div>
+              </div>
+
+              <div class="card mb-4 d-none" id="profile-discipline-card">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <h5 class="mb-0">Discipline</h5>
+                  <span class="badge bg-label-warning" id="profile-discipline-total">0 pts</span>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3 mb-3">
+                    <div class="col-6 col-lg-3"><div class="border rounded-3 p-3 h-100"><div class="small text-muted mb-1">Présences</div><div class="fw-semibold text-success" id="profile-discipline-present">0</div></div></div>
+                    <div class="col-6 col-lg-3"><div class="border rounded-3 p-3 h-100"><div class="small text-muted mb-1">Excusées</div><div class="fw-semibold text-secondary" id="profile-discipline-excused">0</div></div></div>
+                    <div class="col-6 col-lg-3"><div class="border rounded-3 p-3 h-100"><div class="small text-muted mb-1">Absences</div><div class="fw-semibold text-danger" id="profile-discipline-absent">0</div></div></div>
+                    <div class="col-6 col-lg-3"><div class="border rounded-3 p-3 h-100"><div class="small text-muted mb-1">Retard cumulé</div><div class="fw-semibold text-warning" id="profile-discipline-late">0 min</div></div></div>
+                  </div>
+                  <h6 class="mb-2">Derniers mouvements</h6>
+                  <div id="profile-discipline-history" class="small text-muted">Aucun mouvement de points pour le moment.</div>
                 </div>
               </div>
 

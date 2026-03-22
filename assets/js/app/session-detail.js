@@ -1,5 +1,6 @@
 import { activateMenu, bindFormSubmit, escapeHtml, formatDate, getQueryParam, initCrudPanel, nl2br, setAppTitle, showAlert, supabase, tt } from './common.js';
 import { canEdit, getUserContext } from './auth.js';
+import { recalcLatePenaltyForPlayer } from './discipline.js';
 
 setAppTitle('Détail séance');
 
@@ -12,6 +13,10 @@ let currentSession = null;
 let currentLinks = [];
 let planningItems = [];
 let availableTactics = [];
+let teamPlayers = [];
+let attendanceRows = [];
+let attendanceConfig = null;
+let currentPlayerMembership = null;
 
 function safeText(value, fallback = '—') {
   return value ? escapeHtml(String(value)) : fallback;
@@ -102,6 +107,141 @@ function planningStepHtml(item, index) {
   </div>`;
 }
 
+
+function todayIso() {
+  const now = new Date();
+  const tzOffset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - tzOffset).toISOString().slice(0, 10);
+}
+
+function sessionTypeLabel(value) {
+  return value === 'theory' ? 'Théorie' : 'Pratique';
+}
+
+function canManageAttendance() {
+  return isEditor && currentSession?.session_date && currentSession.session_date <= todayIso();
+}
+
+function getAttendanceConfigValue(key, fallback = 0) {
+  const value = Number(attendanceConfig?.[key]);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function computeAttendanceDelta(status, lateMinutes = 0) {
+  const practicePresence = getAttendanceConfigValue('practice_presence_points', 0);
+  const practiceAbsence = getAttendanceConfigValue('practice_absence_penalty', 0);
+  const isTheory = currentSession?.session_type === 'theory';
+  const presencePoints = isTheory ? practicePresence / 2 : practicePresence;
+  const absencePenalty = isTheory ? practiceAbsence / 2 : practiceAbsence;
+  if (status === 'present') return presencePoints;
+  if (status === 'absent_unexcused') return -absencePenalty;
+  return 0;
+}
+
+function attendanceReasonLabel(status) {
+  const type = sessionTypeLabel(currentSession?.session_type).toLowerCase();
+  if (status === 'present') return `${type} - présence`;
+  if (status === 'absent_unexcused') return `${type} - absence non excusée`;
+  if (status === 'absent_excused') return `${type} - absence excusée`;
+  return `${type} - présence`;
+}
+
+function attendanceImpactBadge(delta) {
+  const num = Number(delta || 0);
+  const cls = num > 0 ? 'bg-label-success' : num < 0 ? 'bg-label-danger' : 'bg-label-secondary';
+  const sign = num > 0 ? '+' : '';
+  return `<span class="badge ${cls}">${sign}${num} pt${Math.abs(num) > 1 ? 's' : ''}</span>`;
+}
+
+function attendanceSummary() {
+  const counts = { present: 0, absent_excused: 0, absent_unexcused: 0, late: 0 };
+  attendanceRows.forEach(row => {
+    const status = row.attendance_status || 'present';
+    counts[status] = (counts[status] || 0) + 1;
+    if (Number(row.late_minutes || 0) > 0) counts.late += 1;
+  });
+  return counts;
+}
+
+function currentPlayerAttendanceRow() {
+  if (ctx.role !== 'player' || !currentPlayerMembership) return null;
+  return attendanceRows.find(row => Number(row.player_id) === Number(currentPlayerMembership.id)) || null;
+}
+
+function playerAttendanceHeroBadge() {
+  if (ctx.role !== 'player') return '';
+  const row = currentPlayerAttendanceRow();
+  if (!row) return '';
+  const late = Number(row.late_minutes || 0);
+  const label = row.attendance_status === 'absent_excused'
+    ? 'Absence excusée'
+    : row.attendance_status === 'absent_unexcused'
+      ? 'Absence'
+      : late > 0
+        ? `Présente • retard ${late} min`
+        : 'Présente';
+  const cls = row.attendance_status === 'absent_unexcused'
+    ? 'bg-label-danger'
+    : row.attendance_status === 'absent_excused'
+      ? 'bg-label-info'
+      : 'bg-label-success';
+  return `<span class="badge ${cls}"><i class="bx bx-user-check me-1"></i>${label}</span>`;
+}
+
+function recordedAttendanceRowsWithPlayers() {
+  if (!attendanceRows.length) return [];
+  return attendanceRows.map(row => ({
+    ...row,
+    player: teamPlayers.find(player => Number(player.id) === Number(row.player_id)) || null
+  }));
+}
+
+function renderAttendanceSection() {
+  if (ctx.role === 'player') return '';
+  const counts = attendanceSummary();
+  const canManage = canManageAttendance();
+  const recordedRows = recordedAttendanceRowsWithPlayers();
+  return `
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h5 class="mb-0">Présences & discipline</h5>
+          <div class="text-muted small">Affichage limité à cette séance. Le retard est enregistré sans impact pour le moment.</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          ${recordedRows.length ? `<span class="badge bg-label-success">Présentes ${counts.present}</span>
+          <span class="badge bg-label-info">Excusées ${counts.absent_excused}</span>
+          <span class="badge bg-label-danger">Absentes ${counts.absent_unexcused}</span>
+          <span class="badge bg-label-warning">Retards ${counts.late}</span>` : ''}
+          ${isEditor ? `<button class="btn btn-sm btn-primary" id="attendance-open-btn" ${canManage ? '' : 'disabled'}><i class="bx bx-check-square me-1"></i>Gestion présence</button>` : ''}
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 mb-3">
+          <div class="col-md-4"><div class="session-detail-box h-100"><div class="session-detail-box-label">Type de séance</div><div class="fw-semibold">${sessionTypeLabel(currentSession?.session_type)}</div></div></div>
+          <div class="col-md-4"><div class="session-detail-box h-100"><div class="session-detail-box-label">Présence pratique</div><div class="fw-semibold">+${getAttendanceConfigValue('practice_presence_points', 0)} pts</div><div class="small text-muted">Théorie: +${getAttendanceConfigValue('practice_presence_points', 0) / 2} pts</div></div></div>
+          <div class="col-md-4"><div class="session-detail-box h-100"><div class="session-detail-box-label">Absence non excusée</div><div class="fw-semibold">-${getAttendanceConfigValue('practice_absence_penalty', 0)} pts</div><div class="small text-muted">Théorie: -${getAttendanceConfigValue('practice_absence_penalty', 0) / 2} pts</div></div></div>
+        </div>
+        ${!canManage && isEditor ? `<div class="alert alert-secondary py-2 ${recordedRows.length ? 'mb-3' : 'mb-0'}">La gestion de présence est disponible le jour de la séance et après.</div>` : ''}
+        ${recordedRows.length ? `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Joueuse</th><th>Statut</th><th>Retard</th><th>Impact</th></tr></thead><tbody>${recordedRows.map(({ player, attendance_status, late_minutes, points_delta }) => {
+          const status = attendance_status || 'present';
+          const late = Number(late_minutes || 0);
+          const delta = Number(points_delta ?? computeAttendanceDelta(status, late));
+          return `<tr><td>${escapeHtml(player?.full_name || 'Joueuse')}</td><td>${status === 'absent_excused' ? 'Excusée' : status === 'absent_unexcused' ? 'Absente' : 'Présente'}</td><td>${late > 0 ? `${late} min` : '—'}</td><td>${attendanceImpactBadge(delta)}</td></tr>`;
+        }).join('')}</tbody></table></div>` : `<div class="text-muted">Aucune présence n'est encore enregistrée pour cette séance.</div>`}
+      </div>
+    </div>
+
+    ${isEditor ? `<div class="modal fade" id="attendance-modal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Gestion présence</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><form id="attendance-form"><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Joueuse</th><th>Présente</th><th>Excusée</th><th>Absente</th><th>Retard (min)</th><th>Impact</th></tr></thead><tbody>${teamPlayers.map(player => {
+      const row = attendanceRows.find(item => Number(item.player_id) === Number(player.id));
+      const status = row?.attendance_status || 'present';
+      const late = Number(row?.late_minutes || 0);
+      const delta = Number(row?.points_delta ?? computeAttendanceDelta(status, late));
+      return `<tr data-player-id="${player.id}"><td><div class="fw-semibold">${escapeHtml(player.full_name || '')}</div><div class="small text-muted">Points actuels: ${Number(player.current_points || 0)}</div></td><td><input class="form-check-input attendance-status" type="radio" name="status_${player.id}" value="present" ${status === 'present' ? 'checked' : ''}></td><td><input class="form-check-input attendance-status" type="radio" name="status_${player.id}" value="absent_excused" ${status === 'absent_excused' ? 'checked' : ''}></td><td><input class="form-check-input attendance-status" type="radio" name="status_${player.id}" value="absent_unexcused" ${status === 'absent_unexcused' ? 'checked' : ''}></td><td><input class="form-control form-control-sm attendance-late" type="number" min="0" step="1" value="${late > 0 ? late : ''}" ${status === 'present' ? '' : 'disabled'}></td><td class="attendance-impact-cell">${attendanceImpactBadge(delta)}</td></tr>`;
+    }).join('')}</tbody></table></div></form></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button><button type="button" class="btn btn-primary" id="attendance-save-btn">Enregistrer</button></div></div></div></div>` : ''}
+  `;
+}
+
 function render() {
   if (!currentSession) {
     host.innerHTML = `<div class="card"><div class="card-body">${tt('session_detail.not_found','Séance introuvable.')}</div></div>`;
@@ -145,7 +285,9 @@ function render() {
                 <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
                   <span class="badge bg-label-primary">${tt('page.session_detail','Détail séance')}</span>
                   <span class="badge bg-label-info">${formatDate(currentSession.session_date)}</span>
+                  <span class="badge ${currentSession.session_type === 'theory' ? 'bg-label-info' : 'bg-label-primary'}">${sessionTypeLabel(currentSession.session_type)}</span>
                   <span class="badge bg-label-secondary">${sessionDurationLabel(currentSession)}</span>
+                  ${playerAttendanceHeroBadge()}
                 </div>
                 <h3 class="mb-1">${escapeHtml(currentSession.title || '')}</h3>
                 <div class="text-muted">${escapeHtml(currentSession.teams?.name || '—')} ${currentSession.location ? `• ${escapeHtml(currentSession.location)}` : ''}</div>
@@ -171,6 +313,8 @@ function render() {
             </div>
           </div>
         </div>
+
+        ${renderAttendanceSection()}
 
         ${isEditor ? `<div class="card mb-4 form-panel-hidden" id="planning-form-panel">
           <div class="card-header d-flex justify-content-between align-items-center"><h5 class="mb-0" id="planning-form-title">${tt('session_detail.planning.form.add_title','Ajouter une étape')}</h5><button class="btn btn-sm btn-outline-secondary cancel-plan-form-btn" type="button"><i class="bx bx-x me-1"></i>${tt('common.close','Fermer')}</button></div>
@@ -225,6 +369,7 @@ function render() {
     wirePlanningActions();
     wireTacticActions();
     renderTacticSelectOptions();
+    wireAttendanceActions();
   }
 }
 
@@ -331,6 +476,107 @@ function renderTacticSelectOptions() {
   select.disabled = !candidates.length;
 }
 
+
+function updateAttendancePreviewRow(tr) {
+  if (!tr) return;
+  const status = tr.querySelector('.attendance-status:checked')?.value || 'present';
+  const lateInput = tr.querySelector('.attendance-late');
+  if (lateInput) {
+    lateInput.disabled = status !== 'present';
+    if (status !== 'present') lateInput.value = '';
+  }
+  const late = Number(lateInput?.value || 0);
+  const delta = computeAttendanceDelta(status, late);
+  const impactCell = tr.querySelector('.attendance-impact-cell');
+  if (impactCell) impactCell.innerHTML = attendanceImpactBadge(delta);
+}
+
+function wireAttendanceActions() {
+  const modalEl = document.getElementById('attendance-modal');
+  const openBtn = document.getElementById('attendance-open-btn');
+  const saveBtn = document.getElementById('attendance-save-btn');
+  if (!modalEl || !openBtn || !saveBtn || !window.bootstrap) return;
+  const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+  openBtn.addEventListener('click', () => modal.show());
+  modalEl.querySelectorAll('tbody tr').forEach(tr => {
+    tr.querySelectorAll('.attendance-status').forEach(input => input.addEventListener('change', () => updateAttendancePreviewRow(tr)));
+    tr.querySelector('.attendance-late')?.addEventListener('input', () => updateAttendancePreviewRow(tr));
+    updateAttendancePreviewRow(tr);
+  });
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    const oldHtml = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Enregistrement...';
+    try {
+      const formRows = [...modalEl.querySelectorAll('tbody tr')].map(tr => ({
+        player_id: Number(tr.dataset.playerId),
+        attendance_status: tr.querySelector('.attendance-status:checked')?.value || 'present',
+        late_minutes: Number(tr.querySelector('.attendance-late')?.value || 0)
+      }));
+      const existingMap = new Map(attendanceRows.map(row => [Number(row.player_id), row]));
+      const updatedLateByPlayer = new Map();
+      for (const item of formRows) {
+        const previous = existingMap.get(item.player_id);
+        const normalizedLate = item.attendance_status === 'present' ? item.late_minutes : 0;
+        const newDelta = computeAttendanceDelta(item.attendance_status, normalizedLate);
+        const oldDelta = Number(previous?.points_delta || 0);
+        const diff = newDelta - oldDelta;
+        const payload = {
+          session_id: currentSession.id,
+          team_id: currentSession.team_id,
+          player_id: item.player_id,
+          attendance_status: item.attendance_status,
+          late_minutes: normalizedLate,
+          points_delta: newDelta,
+          points_reason: attendanceReasonLabel(item.attendance_status),
+          recorded_by: ctx.user?.id || null,
+          recorded_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        const { error: upsertError } = await supabase.from('session_attendance').upsert(payload, { onConflict: 'session_id,player_id' });
+        if (upsertError) throw upsertError;
+        updatedLateByPlayer.set(item.player_id, normalizedLate);
+        if (diff !== 0) {
+          const player = teamPlayers.find(row => Number(row.id) === Number(item.player_id));
+          const nextPoints = Number(player?.current_points || 0) + diff;
+          const { error: playerError } = await supabase.from('players').update({ current_points: nextPoints }).eq('id', item.player_id);
+          if (playerError) throw playerError;
+          if (player) player.current_points = nextPoints;
+          const { error: historyError } = await supabase.from('player_points_history').insert({
+            player_id: item.player_id,
+            session_id: currentSession.id,
+            delta: diff,
+            label: previous ? `${attendanceReasonLabel(item.attendance_status)} · correction` : attendanceReasonLabel(item.attendance_status),
+            source_type: 'attendance',
+            created_by: ctx.user?.id || null
+          });
+          if (historyError) throw historyError;
+        }
+      }
+
+      for (const item of formRows) {
+        const player = teamPlayers.find(row => Number(row.id) === Number(item.player_id));
+        await recalcLatePenaltyForPlayer(item.player_id, {
+          actorId: ctx.user?.id || null,
+          playerRow: player || null,
+          teamConfig: attendanceConfig || {},
+          reason: 'Recalcul pénalité retard · séance'
+        });
+      }
+
+      showAlert('Présences enregistrées avec succès.');
+      modal.hide();
+      await loadAll();
+    } catch (error) {
+      console.error(error);
+      showAlert(error.message || "Impossible d'enregistrer les présences.", 'danger');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = oldHtml;
+    }
+  });
+}
+
 function wireTacticActions() {
   const form = document.getElementById('session-tactic-form');
   const select = document.getElementById('session-tactic-select');
@@ -379,7 +625,7 @@ async function loadAll() {
   }
   try {
     const [sessionRes, linksRes, plansRes] = await Promise.all([
-      supabase.from('sessions').select('id,team_id,title,session_date,start_time,end_time,location,notes,teams(name)').eq('id', sessionId).single(),
+      supabase.from('sessions').select('id,team_id,title,session_type,session_date,start_time,end_time,location,notes,teams(name)').eq('id', sessionId).single(),
       supabase.from('session_tactics').select('tactic_id,priority,tactics(id,title,phase,category)').eq('session_id', sessionId).order('id'),
       supabase.from('session_plans').select('*').eq('session_id', sessionId).order('order_index', { ascending: true }).order('id', { ascending: true })
     ]);
@@ -394,6 +640,25 @@ async function loadAll() {
       if (tacticsError) throw tacticsError;
       availableTactics = tacticsData || [];
     }
+    const attendanceQueries = [
+      supabase.from('players').select('id,team_id,full_name,current_points,late_adjusted_minutes,late_penalty_applied').eq('team_id', currentSession.team_id || 0).order('full_name'),
+      supabase.from('session_attendance').select('player_id,attendance_status,late_minutes,points_delta').eq('session_id', currentSession.id),
+      supabase.from('teams').select('default_player_points,practice_presence_points,practice_absence_penalty,late_penalty_threshold_minutes,late_penalty_points').eq('id', currentSession.team_id || 0).maybeSingle()
+    ];
+    if (ctx.role === 'player' && ctx.user?.id) {
+      attendanceQueries.push(supabase.from('players').select('id,team_id,full_name,current_points,late_adjusted_minutes,late_penalty_applied').eq('team_id', currentSession.team_id || 0).eq('profile_id', ctx.user.id).maybeSingle());
+    }
+    const [playersRes, attendanceRes, teamRes, playerMembershipRes] = await Promise.all(attendanceQueries);
+    const { data: playersData, error: playersError } = playersRes;
+    const { data: attendanceData, error: attendanceError } = attendanceRes;
+    const { data: teamData, error: teamError } = teamRes;
+    if (playersError && !String(playersError.message || '').includes('relation')) throw playersError;
+    if (attendanceError && !String(attendanceError.message || '').includes('relation')) throw attendanceError;
+    if (teamError && !String(teamError.message || '').includes('relation')) throw teamError;
+    teamPlayers = playersData || [];
+    attendanceRows = attendanceData || [];
+    attendanceConfig = teamData || {};
+    currentPlayerMembership = playerMembershipRes?.data || null;
     render();
   } catch (error) {
     console.error(error);

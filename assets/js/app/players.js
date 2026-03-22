@@ -38,14 +38,14 @@ try {
 }
 
 async function loadRows() {
-  tbody.innerHTML = `<tr><td colspan="11" class="table-empty">Chargement...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="12" class="table-empty">Chargement...</td></tr>`;
   const { data, error } = await supabase
     .from('players')
-    .select('id,team_id,profile_id,image_url,teams(name),full_name,jersey_number,primary_position,secondary_position,status,captain_role,age,height_cm,weight_kg')
+    .select('id,team_id,profile_id,image_url,teams(name),full_name,jersey_number,primary_position,secondary_position,status,captain_role,age,height_cm,weight_kg,current_points')
     .order('id', { ascending: false });
   if (error) throw error;
   if (!data.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="table-empty">Aucune donnée.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="table-empty">Aucune donnée.</td></tr>`;
     return;
   }
   tbody.innerHTML = data.map(row => `
@@ -64,8 +64,9 @@ async function loadRows() {
       <td>${formatMeasure(row.weight_kg, 'kg')}</td>
       <td>${escapeHtml(row.primary_position || '')}</td>
       <td>${escapeHtml(row.status || '')}</td>
+      <td><span class="badge bg-label-warning">${Number(row.current_points || 0)} pts</span></td>
       <td>${row.profile_id ? `<span class="badge bg-label-success">Lié</span><div class="small text-muted mt-1">ID: ${escapeHtml(row.profile_id || '')}</div>` : '<span class="badge bg-label-warning">Non lié</span>'}</td>
-      <td class="text-end actions-cell">${isEditor ? `<button class="btn btn-sm btn-outline-primary edit-btn" data-id="${row.id}">Modifier</button><button class="btn btn-sm btn-outline-danger delete-btn" data-id="${row.id}" data-label="${escapeHtml(row.full_name || '')}">Supprimer</button>` : '<span class="text-muted">Lecture seule</span>'}</td>
+      <td class="text-end actions-cell"><a class="btn btn-sm btn-outline-secondary" href="player-detail.html?id=${row.id}">Détail</a>${isEditor ? `<button class="btn btn-sm btn-outline-primary edit-btn" data-id="${row.id}">Modifier</button><button class="btn btn-sm btn-outline-danger delete-btn" data-id="${row.id}" data-label="${escapeHtml(row.full_name || '')}">Supprimer</button>` : ''}</td>
     </tr>`).join('');
 }
 
@@ -193,6 +194,10 @@ if (isEditor) bindFormSubmit('entity-form', async fd => {
     savedId = afterRow.id;
     linkedProfileId = afterRow.profile_id || editingProfileId;
   } else {
+    if (payload.team_id != null && payload.current_points == null) {
+      const { data: teamDefaults } = await supabase.from('teams').select('default_player_points').eq('id', payload.team_id).maybeSingle();
+      payload.current_points = Number(teamDefaults?.default_player_points ?? 0);
+    }
     const { data, error } = await supabase.from('players').insert(payload).select('id,profile_id').maybeSingle();
     if (error) throw error;
     savedId = data?.id;

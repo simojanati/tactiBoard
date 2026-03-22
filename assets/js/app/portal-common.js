@@ -12,7 +12,7 @@ export async function getPortalContext() {
   if (ctx.role === 'player') {
     const { data, error } = await supabase
       .from('players')
-      .select('id, team_id, full_name, jersey_number, primary_position, secondary_position, status, captain_role, age, height_cm, weight_kg, profile_id, teams(name)')
+      .select('id, team_id, full_name, jersey_number, primary_position, secondary_position, status, captain_role, age, height_cm, weight_kg, current_points, profile_id, teams(name)')
       .eq('profile_id', profileId)
       .maybeSingle();
     if (error) throw error;
@@ -32,7 +32,7 @@ export async function fetchTeamBundle(teamId) {
   if (!teamId) return { team: null, players: [], coaches: [], tactics: [], sessions: [], matches: [] };
   const [teamRes, playersRes, coachesRes, tacticsRes, sessionsRes, matchesRes] = await Promise.all([
     supabase.from('teams').select('*').eq('id', teamId).maybeSingle(),
-    supabase.from('players').select('id,profile_id,full_name,jersey_number,primary_position,status,image_url,captain_role,age,height_cm,weight_kg').eq('team_id', teamId).order('jersey_number', { ascending: true, nullsFirst: false }).order('full_name'),
+    supabase.from('players').select('id,profile_id,full_name,jersey_number,primary_position,status,image_url,captain_role,age,height_cm,weight_kg,current_points').eq('team_id', teamId).order('jersey_number', { ascending: true, nullsFirst: false }).order('full_name'),
     supabase.from('coaches').select('id,profile_id,full_name,role,email,image_url').eq('team_id', teamId).order('full_name'),
     supabase.from('tactics').select('id,title,phase,category,formation,status').eq('team_id', teamId).order('title'),
     supabase.from('sessions').select('id,title,session_date,start_time,location').eq('team_id', teamId).order('session_date', { ascending: false }),

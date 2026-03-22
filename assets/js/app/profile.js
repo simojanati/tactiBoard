@@ -11,6 +11,14 @@ const profileName = document.getElementById('profile-name');
 const profileRole = document.getElementById('profile-role');
 const profileTeamBadge = document.getElementById('profile-team-badge');
 const profileEmailBadge = document.getElementById('profile-email-badge');
+const profilePointsBadge = document.getElementById('profile-points-badge');
+const profileDisciplineCard = document.getElementById('profile-discipline-card');
+const profileDisciplineTotal = document.getElementById('profile-discipline-total');
+const profileDisciplinePresent = document.getElementById('profile-discipline-present');
+const profileDisciplineExcused = document.getElementById('profile-discipline-excused');
+const profileDisciplineAbsent = document.getElementById('profile-discipline-absent');
+const profileDisciplineLate = document.getElementById('profile-discipline-late');
+const profileDisciplineHistory = document.getElementById('profile-discipline-history');
 const profileCreatedAt = document.getElementById('profile-created-at');
 const profileEmail = document.getElementById('profile-email');
 const profileRoleInput = document.getElementById('profile-role-input');
@@ -110,6 +118,49 @@ function captainIcon(value, sizeClass = '') {
   return `<span class="captain-icon-wrap" title="${escapeHtml(title)}"><img src="${src}" alt="${escapeHtml(title || 'Captain')}" class="captain-icon ${sizeClass}"></span>`;
 }
 
+function buildDisciplineStats(rows = []) {
+  return rows.reduce((acc, row) => {
+    const status = row.attendance_status || 'present';
+    if (status === 'present') acc.present += 1;
+    if (status === 'absent_excused') acc.excused += 1;
+    if (status === 'absent_unexcused') acc.absent += 1;
+    acc.late += Number(row.late_minutes || 0);
+    return acc;
+  }, { present: 0, excused: 0, absent: 0, late: 0 });
+}
+
+function renderDisciplineHistory(items = []) {
+  if (!profileDisciplineHistory) return;
+  if (!items.length) {
+    profileDisciplineHistory.innerHTML = 'Aucun mouvement de points pour le moment.';
+    return;
+  }
+  profileDisciplineHistory.innerHTML = `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Date</th><th>Motif</th><th>Impact</th></tr></thead><tbody>${items.map(item => `<tr><td>${escapeHtml(formatDate(item.created_at))}</td><td>${escapeHtml(item.label || 'Discipline')}</td><td>${Number(item.delta || 0) >= 0 ? `<span class="badge bg-label-success">+${Number(item.delta || 0)}</span>` : `<span class="badge bg-label-danger">${Number(item.delta || 0)}</span>`}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+async function loadDisciplineProfile() {
+  if (ctx.role !== 'player' || !linked?.id) return;
+  if (profileDisciplineCard) profileDisciplineCard.classList.remove('d-none');
+  if (profileDisciplineTotal) profileDisciplineTotal.textContent = `${Number(linked?.current_points || 0)} pts`;
+  try {
+    const [attendanceRes, historyRes] = await Promise.all([
+      supabase.from('session_attendance').select('attendance_status,late_minutes').eq('player_id', linked.id),
+      supabase.from('player_points_history').select('delta,label,created_at').eq('player_id', linked.id).order('created_at', { ascending: false }).limit(5)
+    ]);
+    const attendanceRows = attendanceRes.error ? [] : (attendanceRes.data || []);
+    const historyRows = historyRes.error ? [] : (historyRes.data || []);
+    const stats = buildDisciplineStats(attendanceRows);
+    if (profileDisciplinePresent) profileDisciplinePresent.textContent = String(stats.present);
+    if (profileDisciplineExcused) profileDisciplineExcused.textContent = String(stats.excused);
+    if (profileDisciplineAbsent) profileDisciplineAbsent.textContent = String(stats.absent);
+    if (profileDisciplineLate) profileDisciplineLate.textContent = `${stats.late} min`;
+    renderDisciplineHistory(historyRows);
+  } catch (err) {
+    console.warn('discipline profile unavailable', err);
+    renderDisciplineHistory([]);
+  }
+}
+
 
 function paintProfile() {
   const p = ctx.profile || {};
@@ -120,6 +171,11 @@ function paintProfile() {
   profileRole.textContent = ROLE_LABELS[ctx.role] || ctx.role;
   profileTeamBadge.textContent = team?.name || tt('profile.no_team','Aucune équipe');
   profileEmailBadge.textContent = email;
+  if (profilePointsBadge) {
+    const shouldShowPoints = ctx.role === 'player';
+    profilePointsBadge.classList.toggle('d-none', !shouldShowPoints);
+    if (shouldShowPoints) profilePointsBadge.textContent = `Discipline • ${Number(linked?.current_points ?? 0)} pts`;
+  }
   profileCreatedAt.textContent = `${tt('profile.account_created','Compte créé')} : ${formatDate(ctx.user?.created_at)}`;
   const isActive = p.is_active !== false;
   profileActiveDot?.classList.toggle('d-none', !isActive);
@@ -142,7 +198,7 @@ function paintProfile() {
 
 async function loadLinkedRoleData() {
   if (ctx.role === 'player') {
-    const { data, error } = await supabase.from('players').select('id,profile_id,image_url,full_name,jersey_number,primary_position,secondary_position,status,captain_role,age,height_cm,weight_kg,teams(name,logo_url)').eq('profile_id', ctx.user.id).maybeSingle();
+    const { data, error } = await supabase.from('players').select('id,profile_id,image_url,full_name,jersey_number,primary_position,secondary_position,status,captain_role,age,height_cm,weight_kg,current_points,teams(name,logo_url)').eq('profile_id', ctx.user.id).maybeSingle();
     if (error) throw error;
     linked = data || null;
   } else if (ctx.role === 'coach') {
@@ -163,6 +219,7 @@ async function loadLinkedRoleData() {
     ctx.profile = profile || ctx.profile;
     await loadLinkedRoleData();
     paintProfile();
+    await loadDisciplineProfile();
     initPasswordToggles();
   } catch (err) {
     console.error(err);

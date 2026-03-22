@@ -15,6 +15,7 @@ export const ROLE_PAGE_RULES = {
   'teams.html': ['admin'],
   'field-templates.html': ['admin'],
   'players.html': ['admin','coach'],
+  'player-detail.html': ['admin','coach'],
   'coaches.html': ['admin'],
   'tactics.html': ['admin','coach'],
   'tactical-board.html': ['admin','coach'],
