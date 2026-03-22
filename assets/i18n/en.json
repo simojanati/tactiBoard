@@ -1253,5 +1253,7 @@
   "my_team.top3_title": "Top 3 discipline",
   "my_team.top3_desc": "Ranking by points, then unexcused absences, then captain priority.",
   "my_team.top3_empty": "No ranked player yet.",
-  "session_detail.type_label": "Session type"
+  "session_detail.type_label": "Session type",
+  "pwa.install": "Install app",
+  "pwa.install_hint": "Install"
 }

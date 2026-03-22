@@ -2145,3 +2145,17 @@ html.dark-style #sidebar-collapse-toggle.is-collapsed {
     border-color: rgba(148, 163, 184, .16) !important;
   }
 }
+
+/* PWA */
+.pwa-install-wrap .btn,
+#pwa-install-login .btn {
+  white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+  .pwa-install-wrap [data-pwa-install-label] {
+    display: none;
+  }
+  .pwa-install-wrap .btn i {
+    margin-right: 0 !important;
+  }
+}

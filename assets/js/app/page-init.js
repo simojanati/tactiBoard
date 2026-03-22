@@ -2,6 +2,7 @@
 import { ROLE_LABELS, canAdmin, canEdit, firstAllowedPage, getUserContext, readCachedAuth, requireAuthForPage, signOut, supabase } from './auth.js';
 import { applyTranslations, initI18n, setLanguage, t, getLanguage } from './i18n.js';
 import { escapeHtml, getThemeMode, setThemeMode } from './common.js';
+import { injectNavbarInstallButton, initPwaUi, registerServiceWorker } from './pwa.js';
 
 await initI18n();
 
@@ -438,6 +439,8 @@ function syncNavbarPageTitle() {
 normalizeMenu();
 applyStoredActiveMenu();
 syncNavbarPageTitle();
+initPwaUi();
+registerServiceWorker();
 
 const cachedAuth = readCachedAuth();
 if (cachedAuth?.role) {
@@ -458,6 +461,7 @@ if (cachedAuth?.role) {
   applyCrudVisibility(ctx.role);
   await injectNotificationsBell(ctx);
   await injectUserBox(ctx);
+  injectNavbarInstallButton();
   injectLanguageSwitcher();
   injectThemeSwitcher();
   injectSidebarCollapseToggle();
@@ -471,4 +475,4 @@ if (cachedAuth?.role) {
   watchPlayerMediaProtection();
 })();
 
-document.addEventListener('app:language-changed', () => { normalizeMenu(); applyStoredActiveMenu(); hideMenuByRole(document.documentElement.dataset.userRole || readCachedAuth()?.role || 'player'); syncNavbarPageTitle(); injectSidebarCollapseToggle(); refreshFooterBranding(); applyTranslations(); injectThemeSwitcher(); });
+document.addEventListener('app:language-changed', () => { normalizeMenu(); applyStoredActiveMenu(); hideMenuByRole(document.documentElement.dataset.userRole || readCachedAuth()?.role || 'player'); syncNavbarPageTitle(); injectSidebarCollapseToggle(); refreshFooterBranding(); applyTranslations(); injectThemeSwitcher(); injectNavbarInstallButton(); });

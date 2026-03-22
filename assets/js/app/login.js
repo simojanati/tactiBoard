@@ -1,8 +1,11 @@
 import { firstAllowedPage, getSession, signInWithPassword, signUpWithPassword } from './auth.js';
 import { clearAlert, fetchTeamsOptions, showAlert, supabase, getThemeMode, setThemeMode } from './common.js';
 import { initI18n, t, setLanguage } from './i18n.js';
+import { injectLoginInstallButton, initPwaUi, registerServiceWorker } from './pwa.js';
 
 await initI18n();
+initPwaUi();
+registerServiceWorker();
 
 const signInForm = document.getElementById('login-form');
 const signUpForm = document.getElementById('register-form');
@@ -212,3 +215,6 @@ if (registerTeamSelect) {
   });
   document.body.appendChild(box);
 })();
+
+
+injectLoginInstallButton();

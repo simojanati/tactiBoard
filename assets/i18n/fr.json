@@ -1253,5 +1253,7 @@
   "my_team.top3_title": "Top 3 discipline",
   "my_team.top3_desc": "Classement par points, puis absences non excusées, puis priorité capitaine.",
   "my_team.top3_empty": "Aucune joueuse classée pour le moment.",
-  "session_detail.type_label": "Type de séance"
+  "session_detail.type_label": "Type de séance",
+  "pwa.install": "Installer l'application",
+  "pwa.install_hint": "Installer"
 }
