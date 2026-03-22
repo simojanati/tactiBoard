@@ -15,7 +15,6 @@ const CORE_ASSETS = [
   './assets/js/config.js',
   './assets/js/main.js',
   './assets/js/app/config.local.js',
-  '
   './assets/i18n/fr.json',
   './assets/i18n/en.json',
   './assets/img/favicon/favicon.ico',
