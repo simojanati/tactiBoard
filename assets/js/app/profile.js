@@ -3,7 +3,7 @@ import { activateMenu, escapeHtml, formatDate, setAppTitle, showAlert, supabase,
 import { ROLE_LABELS, requireAuthForPage } from './auth.js';
 import './page-init.js';
 
-setAppTitle('Mon profil');
+setAppTitle(tt('page.profile', 'Mon profil'));
 activateMenu('profile');
 
 const avatarImg = document.getElementById('profile-avatar');
@@ -47,8 +47,8 @@ function syncPasswordToggle(group) {
   const icon = btn?.querySelector('i');
   if (!input || !btn) return;
   const visible = input.type === 'text';
-  btn.setAttribute('aria-label', visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
-  btn.setAttribute('title', visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+  btn.setAttribute('aria-label', visible ? tt('profile.password_hide', 'Masquer le mot de passe') : tt('profile.password_show', 'Afficher le mot de passe'));
+  btn.setAttribute('title', visible ? tt('profile.password_hide', 'Masquer le mot de passe') : tt('profile.password_show', 'Afficher le mot de passe'));
   btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
   if (icon) icon.className = visible ? 'bx bx-show' : 'bx bx-hide';
 }
@@ -132,10 +132,10 @@ function buildDisciplineStats(rows = []) {
 function renderDisciplineHistory(items = []) {
   if (!profileDisciplineHistory) return;
   if (!items.length) {
-    profileDisciplineHistory.innerHTML = 'Aucun mouvement de points pour le moment.';
+    profileDisciplineHistory.innerHTML = tt('profile.discipline_history_empty', 'Aucun mouvement de points pour le moment.');
     return;
   }
-  profileDisciplineHistory.innerHTML = `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Date</th><th>Motif</th><th>Impact</th></tr></thead><tbody>${items.map(item => `<tr><td>${escapeHtml(formatDate(item.created_at))}</td><td>${escapeHtml(item.label || 'Discipline')}</td><td>${Number(item.delta || 0) >= 0 ? `<span class="badge bg-label-success">+${Number(item.delta || 0)}</span>` : `<span class="badge bg-label-danger">${Number(item.delta || 0)}</span>`}</td></tr>`).join('')}</tbody></table></div>`;
+  profileDisciplineHistory.innerHTML = `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>${tt('profile.table_date','Date')}</th><th>${tt('profile.table_reason','Motif')}</th><th>${tt('profile.table_impact','Impact')}</th></tr></thead><tbody>${items.map(item => `<tr><td>${escapeHtml(formatDate(item.created_at))}</td><td>${escapeHtml(item.label || tt('profile.discipline_label','Discipline'))}</td><td>${Number(item.delta || 0) >= 0 ? `<span class="badge bg-label-success">+${Number(item.delta || 0)}</span>` : `<span class="badge bg-label-danger">${Number(item.delta || 0)}</span>`}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 async function loadDisciplineProfile() {
@@ -174,7 +174,7 @@ function paintProfile() {
   if (profilePointsBadge) {
     const shouldShowPoints = ctx.role === 'player';
     profilePointsBadge.classList.toggle('d-none', !shouldShowPoints);
-    if (shouldShowPoints) profilePointsBadge.textContent = `Discipline • ${Number(linked?.current_points ?? 0)} pts`;
+    if (shouldShowPoints) profilePointsBadge.textContent = `${tt('profile.discipline_label','Discipline')} • ${Number(linked?.current_points ?? 0)} pts`;
   }
   profileCreatedAt.textContent = `${tt('profile.account_created','Compte créé')} : ${formatDate(ctx.user?.created_at)}`;
   const isActive = p.is_active !== false;

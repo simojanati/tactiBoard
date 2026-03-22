@@ -3,6 +3,7 @@ import { canEdit, getUserContext } from './auth.js';
 
 setAppTitle('Joueuses');
 activateMenu('players');
+const tt = (key, fallback='') => (window.t ? window.t(key, fallback) : (fallback || key));
 const tbody = document.getElementById('entity-table');
 const teamSelect = document.getElementById('team-select');
 const form = document.getElementById('entity-form');
@@ -34,11 +35,11 @@ imageFileInput?.addEventListener('change', () => {
 try {
   await fetchTeamsOptions(teamSelect);
 } catch {
-  showAlert('Impossible de charger les équipes. Ajoute au moins une équipe.', 'warning');
+  showAlert(tt('players.load_teams_failed','Impossible de charger les équipes. Ajoute au moins une équipe.'), 'warning');
 }
 
 async function loadRows() {
-  tbody.innerHTML = `<tr><td colspan="12" class="table-empty">Chargement...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="12" class="table-empty">${tt('common.loading','Chargement...')}</td></tr>`;
   const { data, error } = await supabase
     .from('players')
     .select('id,team_id,profile_id,image_url,teams(name),full_name,jersey_number,primary_position,secondary_position,status,captain_role,age,height_cm,weight_kg,current_points')
@@ -66,7 +67,7 @@ async function loadRows() {
       <td>${escapeHtml(row.status || '')}</td>
       <td><span class="badge bg-label-warning">${Number(row.current_points || 0)} pts</span></td>
       <td>${row.profile_id ? `<span class="badge bg-label-success">Lié</span><div class="small text-muted mt-1">ID: ${escapeHtml(row.profile_id || '')}</div>` : '<span class="badge bg-label-warning">Non lié</span>'}</td>
-      <td class="text-end actions-cell"><a class="btn btn-sm btn-outline-secondary" href="player-detail.html?id=${row.id}">Détail</a>${isEditor ? `<button class="btn btn-sm btn-outline-primary edit-btn" data-id="${row.id}">Modifier</button><button class="btn btn-sm btn-outline-danger delete-btn" data-id="${row.id}" data-label="${escapeHtml(row.full_name || '')}">Supprimer</button>` : ''}</td>
+      <td class="text-end actions-cell"><a class="btn btn-sm btn-outline-secondary" href="player-detail.html?id=${row.id}">${tt('players.detail','Détail')}</a>${isEditor ? `<button class="btn btn-sm btn-outline-primary edit-btn" data-id="${row.id}">Modifier</button><button class="btn btn-sm btn-outline-danger delete-btn" data-id="${row.id}" data-label="${escapeHtml(row.full_name || '')}">Supprimer</button>` : ''}</td>
     </tr>`).join('');
 }
 
@@ -172,7 +173,7 @@ if (isEditor) bindFormSubmit('entity-form', async fd => {
   if (id) {
     const { data: beforeRow, error: beforeError } = await supabase.from('players').select('id,profile_id,team_id,full_name,jersey_number,primary_position,secondary_position,status,captain_role,age,height_cm,weight_kg,image_url').eq('id', id).maybeSingle();
     if (beforeError) throw beforeError;
-    if (!beforeRow) throw new Error("Joueuse introuvable pour la mise à jour.");
+    if (!beforeRow) throw new Error(tt('players.player_missing_update','Joueuse introuvable pour la mise à jour.'));
 
     const { error } = await supabase.from('players').update(payload).eq('id', id);
     if (error) throw error;
@@ -212,7 +213,7 @@ if (isEditor) bindFormSubmit('entity-form', async fd => {
   editingProfileId = null;
   updateImagePreview('');
   idInput.value = '';
-  submitLabel.textContent = 'Enregistrer';
+  submitLabel.textContent = tt('common.save','Enregistrer');
   panel.close(true);
   await fetchTeamsOptions(teamSelect);
   showAlert(id ? 'Joueuse mise à jour avec succès.' : 'Joueuse enregistrée avec succès.');

@@ -21,7 +21,7 @@ function ageCell(value) {
 }
 
 function pointsBadge(value) {
-  return `<span class="badge bg-label-warning">${Number(value || 0)} pts</span>`;
+  return `<span class="badge bg-label-warning">${Number(value || 0)} ${tt('player_detail.unit_pts','pts')}</span>`;
 }
 
 function statCard(label, value, tone = 'primary') {
@@ -32,16 +32,16 @@ function statCard(label, value, tone = 'primary') {
 
 function validateEvenPoints(value, label) {
   const num = Number(value);
-  if (!Number.isInteger(num)) throw new Error(`${label} doit être un nombre entier.`);
-  if (num % 2 !== 0) throw new Error(`${label} doit être un nombre pair, car la théorie vaut 50% de la pratique.`);
-  if (num < 0) throw new Error(`${label} doit être positif.`);
+  if (!Number.isInteger(num)) throw new Error(tt('my_team.validation_integer','{label} doit être un nombre entier.').replace('{label}', label));
+  if (num % 2 !== 0) throw new Error(tt('my_team.validation_even','{label} doit être un nombre pair, car la théorie vaut 50% de la pratique.').replace('{label}', label));
+  if (num < 0) throw new Error(tt('my_team.validation_positive','{label} doit être positif.').replace('{label}', label));
   return num;
 }
 
 function validateWholePositive(value, label) {
   const num = Number(value);
-  if (!Number.isInteger(num)) throw new Error(`${label} doit être un nombre entier.`);
-  if (num < 0) throw new Error(`${label} doit être positif.`);
+  if (!Number.isInteger(num)) throw new Error(tt('my_team.validation_integer','{label} doit être un nombre entier.').replace('{label}', label));
+  if (num < 0) throw new Error(tt('my_team.validation_positive','{label} doit être positif.').replace('{label}', label));
   return num;
 }
 
@@ -150,13 +150,13 @@ if (!ctx.teamId) {
     <div class="row mb-4">
       <div class="col-12"><div class="card"><div class="card-body"><div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3"><div><h5 class="mb-1">${tt('my_team.top3_title','Top 3 discipline')}</h5><div class="small text-muted">${tt('my_team.top3_desc','Classement par points, puis absences non excusées, puis priorité capitaine.')}</div></div></div>${topPlayers.length ? `<div class="row">${topPlayers.map((player, index) => buildPodiumCard(player, index, disciplineByPlayer.get(player.id) || {})).join('')}</div>` : `<div class="text-muted small">${tt('my_team.top3_empty','Aucune joueuse classée pour le moment.')}</div>`}</div></div></div>
     </div>
-    ${ctx.role === 'player' ? `<div class="row mb-4"><div class="col-12"><div class="card"><div class="card-body"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><h5 class="mb-1">Discipline</h5><div class="small text-muted">Synthèse de tes présences et derniers impacts de points.</div></div>${pointsBadge(ctx.membership?.current_points || 0)}</div><div class="row">${statCard('Présences', myStats.present, 'success')}${statCard('Excusées', myStats.excused, 'secondary')}${statCard('Absences', myStats.absent, 'danger')}${statCard('Retard cumulé', `${myStats.late} min`, 'warning')}</div><div class="mt-2"><h6 class="mb-2">Derniers mouvements</h6>${myHistory.length ? `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Date</th><th>Motif</th><th>Impact</th></tr></thead><tbody>${myHistory.map(item => `<tr><td>${escapeHtml(new Date(item.created_at || '').toLocaleDateString('fr-FR'))}</td><td>${escapeHtml(item.label || 'Discipline')}</td><td>${Number(item.delta || 0) >= 0 ? `<span class="badge bg-label-success">+${Number(item.delta || 0)}</span>` : `<span class="badge bg-label-danger">${Number(item.delta || 0)}</span>`}</td></tr>`).join('')}</tbody></table></div>` : `<div class="text-muted small">Aucun mouvement de points pour le moment.</div>`}</div></div></div></div></div>` : ''}
+    ${ctx.role === 'player' ? `<div class="row mb-4"><div class="col-12"><div class="card"><div class="card-body"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><h5 class="mb-1">${tt('my_team.discipline_title','Discipline')}</h5><div class="small text-muted">${tt('my_team.discipline_desc','Synthèse de tes présences et derniers impacts de points.')}</div></div>${pointsBadge(ctx.membership?.current_points || 0)}</div><div class="row">${statCard(tt('my_team.stat_present','Présences'), myStats.present, 'success')}${statCard(tt('my_team.stat_excused','Excusées'), myStats.excused, 'secondary')}${statCard(tt('my_team.stat_absent','Absences'), myStats.absent, 'danger')}${statCard(tt('my_team.stat_late_total','Retard cumulé'), `${myStats.late} ${tt('my_team.unit_min','min')}`, 'warning')}</div><div class="mt-2"><h6 class="mb-2">${tt('my_team.latest_changes','Derniers mouvements')}</h6>${myHistory.length ? `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>${tt('profile.table_date','Date')}</th><th>${tt('profile.table_reason','Motif')}</th><th>${tt('profile.table_impact','Impact')}</th></tr></thead><tbody>${myHistory.map(item => `<tr><td>${escapeHtml(new Date(item.created_at || '').toLocaleDateString())}</td><td>${escapeHtml(item.label || tt('profile.discipline_label','Discipline'))}</td><td>${Number(item.delta || 0) >= 0 ? `<span class="badge bg-label-success">+${Number(item.delta || 0)}</span>` : `<span class="badge bg-label-danger">${Number(item.delta || 0)}</span>`}</td></tr>`).join('')}</tbody></table></div>` : `<div class="text-muted small">${tt('my_team.no_point_changes','Aucun mouvement de points pour le moment.')}</div>`}</div></div></div></div></div>` : ''}
     <div class="row">
       <div class="col-lg-7 mb-4"><div id="team-roster"></div></div>
       <div class="col-lg-5 mb-4"><div id="team-staff"></div></div>
     </div>`;
-  const rosterHeaders = ctx.role === 'coach' ? [tt('players.number','#'), tt('my_team.roster_name','Nom'), tt('my_team.roster_position','Poste'), tt('my_team.captain','Capitaine'), tt('my_team.age','Âge'), tt('my_team.status','Statut'), 'Points', 'Détail'] : [tt('players.number','#'), tt('my_team.roster_name','Nom'), tt('my_team.roster_position','Poste'), tt('my_team.captain','Capitaine'), tt('my_team.age','Âge'), tt('my_team.status','Statut')];
-  renderSimpleTable(document.getElementById('team-roster'), rosterHeaders, bundle.players.map(p => `<tr><td>${escapeHtml(p.jersey_number ?? '—')}</td><td><div class="d-flex align-items-center gap-2"><img src="${personAvatarUrl(p)}" alt="${escapeHtml(p.full_name || '')}" class="player-avatar-sm"><span>${escapeHtml(p.full_name || '')}</span></div></td><td>${escapeHtml(p.primary_position || '')}</td><td>${captainBadge(p.captain_role)}</td><td>${ageCell(p.age)}</td><td>${escapeHtml(p.status || '')}</td>${ctx.role === 'coach' ? `<td>${pointsBadge(p.current_points || 0)}</td><td><a class="btn btn-sm btn-outline-secondary" href="player-detail.html?id=${p.id}&from=my-team">Détail</a></td>` : ''}</tr>`).join(''), tt('my_team.no_players','Aucune joueuse.'));
+  const rosterHeaders = ctx.role === 'coach' ? [tt('players.number','#'), tt('my_team.roster_name','Nom'), tt('my_team.roster_position','Poste'), tt('my_team.captain','Capitaine'), tt('my_team.age','Âge'), tt('my_team.status','Statut'), tt('my_team.points','Points'), tt('my_team.detail','Détail')] : [tt('players.number','#'), tt('my_team.roster_name','Nom'), tt('my_team.roster_position','Poste'), tt('my_team.captain','Capitaine'), tt('my_team.age','Âge'), tt('my_team.status','Statut')];
+  renderSimpleTable(document.getElementById('team-roster'), rosterHeaders, bundle.players.map(p => `<tr><td>${escapeHtml(p.jersey_number ?? '—')}</td><td><div class="d-flex align-items-center gap-2"><img src="${personAvatarUrl(p)}" alt="${escapeHtml(p.full_name || '')}" class="player-avatar-sm"><span>${escapeHtml(p.full_name || '')}</span></div></td><td>${escapeHtml(p.primary_position || '')}</td><td>${captainBadge(p.captain_role)}</td><td>${ageCell(p.age)}</td><td>${escapeHtml(p.status || '')}</td>${ctx.role === 'coach' ? `<td>${pointsBadge(p.current_points || 0)}</td><td><a class="btn btn-sm btn-outline-secondary" href="player-detail.html?id=${p.id}&from=my-team">${tt('my_team.detail','Détail')}</a></td>` : ''}</tr>`).join(''), tt('my_team.no_players','Aucune joueuse.'));
   renderSimpleTable(document.getElementById('team-staff'), [tt('my_team.roster_name','Nom'), tt('my_team.staff_role','Rôle'), tt('profile.email','Email')], bundle.coaches.map(c => `<tr><td><div class="d-flex align-items-center gap-2"><img src="${personAvatarUrl(c)}" alt="${escapeHtml(c.full_name || '')}" class="coach-avatar-sm"><span>${escapeHtml(c.full_name || '')}</span></div></td><td>${escapeHtml(c.role || tt('my_team.role_coach','Coach'))}</td><td>${escapeHtml(c.email || '')}</td></tr>`).join(''), tt('my_team.no_staff','Aucun coach.'));
 
   const teamConfigForm = document.getElementById('team-config-form');
@@ -179,11 +179,11 @@ if (!ctx.teamId) {
     try {
       const formData = new FormData(teamConfigForm);
       const payload = Object.fromEntries(formData.entries());
-      payload.default_player_points = validateWholePositive(payload.default_player_points || 0, 'Points initiaux');
-      payload.practice_presence_points = validateEvenPoints(payload.practice_presence_points, 'Présence pratique');
-      payload.practice_absence_penalty = validateEvenPoints(payload.practice_absence_penalty, 'Absence non excusée pratique');
-      payload.late_penalty_threshold_minutes = validateWholePositive(payload.late_penalty_threshold_minutes || 0, 'Seuil retard cumulé');
-      payload.late_penalty_points = validateWholePositive(payload.late_penalty_points || 0, 'Pénalité retard cumulée');
+      payload.default_player_points = validateWholePositive(payload.default_player_points || 0, tt('my_team.label_default_points','Points initiaux'));
+      payload.practice_presence_points = validateEvenPoints(payload.practice_presence_points, tt('my_team.label_practice_presence','Présence pratique'));
+      payload.practice_absence_penalty = validateEvenPoints(payload.practice_absence_penalty, tt('my_team.label_practice_absence','Absence non excusée pratique'));
+      payload.late_penalty_threshold_minutes = validateWholePositive(payload.late_penalty_threshold_minutes || 0, tt('my_team.label_late_threshold','Seuil retard cumulé'));
+      payload.late_penalty_points = validateWholePositive(payload.late_penalty_points || 0, tt('my_team.label_late_penalty','Pénalité retard cumulée'));
 
       const { data: updatedTeam, error } = await supabase
         .from('teams')
@@ -192,7 +192,7 @@ if (!ctx.teamId) {
         .select('id,late_penalty_threshold_minutes,late_penalty_points')
         .maybeSingle();
       if (error) throw error;
-      if (!updatedTeam?.id) throw new Error('Impossible de mettre à jour la configuration discipline.');
+      if (!updatedTeam?.id) throw new Error(tt('my_team.team_config_update_failed','Impossible de mettre à jour la configuration discipline.'));
 
       const { data: teamPlayers, error: playersError } = await supabase
         .from('players')
@@ -205,7 +205,7 @@ if (!ctx.teamId) {
           actorId: ctx.user?.id || null,
           playerRow: player,
           teamConfig: updatedTeam,
-          reason: 'Recalcul pénalité retard · configuration équipe'
+          reason: tt('my_team.recalc_reason_team_config','Recalcul pénalité retard · configuration équipe')
         });
       }
 

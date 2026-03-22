@@ -2,7 +2,9 @@ import { activateMenu, escapeHtml, formatDate, getQueryParam, personAvatarUrl, s
 import { requireAuthForPage } from './auth.js';
 import { buildDisciplineStats, computeLatePenaltyState, recalcLatePenaltyForPlayer } from './discipline.js';
 
-setAppTitle('Détail joueuse');
+const tt = (key, fallback = '') => (window.t ? window.t(key, fallback) : (fallback || key));
+
+setAppTitle(tt('page.player_detail','Détail joueuse'));
 activateMenu('players');
 
 const host = document.getElementById('player-detail-content');
@@ -13,7 +15,7 @@ const backToTeam = document.getElementById('back-to-team');
 
 function captainBadge(value, sizeClass = '') {
   const map = { captain_1: '../assets/img/captains/captaine1.png', captain_2: '../assets/img/captains/captaine2.png', captain_3: '../assets/img/captains/captaine3.png' };
-  const labels = { captain_1: 'Capitaine 1', captain_2: 'Capitaine 2', captain_3: 'Capitaine 3' };
+  const labels = { captain_1: tt('player_detail.captain_1','Capitaine 1'), captain_2: tt('player_detail.captain_2','Capitaine 2'), captain_3: tt('player_detail.captain_3','Capitaine 3') };
   const src = map[value];
   if (!src) return '<span class="text-muted">—</span>';
   const title = labels[value] || '';
@@ -32,13 +34,13 @@ function impactBadge(delta) {
 }
 
 function sessionTypeLabel(value) {
-  return value === 'theory' ? 'Théorie' : 'Pratique';
+  return value === 'theory' ? tt('player_detail.session_type_theory','Théorie') : tt('player_detail.session_type_practice','Pratique');
 }
 
 function attendanceStatusLabel(value) {
-  if (value === 'absent_excused') return 'Absence excusée';
-  if (value === 'absent_unexcused') return 'Absence non excusée';
-  return 'Présence';
+  if (value === 'absent_excused') return tt('player_detail.status_absent_excused','Absence excusée');
+  if (value === 'absent_unexcused') return tt('player_detail.status_absent_unexcused','Absence non excusée');
+  return tt('player_detail.status_present','Présence');
 }
 
 function buildAdjustmentModal(state, canAdjust) {
@@ -48,28 +50,28 @@ function buildAdjustmentModal(state, canAdjust) {
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Ajuster le retard cumulé</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            <h5 class="modal-title">${tt('player_detail.adjust_late_title','Ajuster le retard cumulé')}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="${tt('player_detail.close','Fermer')}"></button>
           </div>
           <form id="late-adjust-form">
             <div class="modal-body">
               <div class="alert alert-info mb-3">
-                <div class="small mb-1">Retard total enregistré</div>
+                <div class="small mb-1">${tt('player_detail.total_late_recorded','Retard total enregistré')}</div>
                 <div class="fw-semibold">${state.totalLateMinutes} min</div>
               </div>
               <div class="mb-3">
-                <label class="form-label">Minutes ajustées</label>
+                <label class="form-label">${tt('player_detail.adjusted_minutes','Minutes ajustées')}</label>
                 <input class="form-control" type="number" min="0" step="1" name="late_adjusted_minutes" value="${state.adjustedMinutes}" required />
-                <div class="form-text">Utilise cette valeur pour retirer des minutes déjà rattrapées par la joueuse.</div>
+                <div class="form-text">${tt('player_detail.adjusted_help','Utilise cette valeur pour retirer des minutes déjà rattrapées par la joueuse.')}</div>
               </div>
               <div class="mb-0">
-                <label class="form-label">Motif</label>
-                <textarea class="form-control" rows="3" name="reason" placeholder="Exemple : rattrapage sur séance supplémentaire"></textarea>
+                <label class="form-label">${tt('player_detail.reason','Motif')}</label>
+                <textarea class="form-control" rows="3" name="reason" placeholder="${tt('player_detail.reason_placeholder','Exemple : rattrapage sur séance supplémentaire')}"></textarea>
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-              <button type="submit" class="btn btn-primary" id="late-adjust-save-btn">Enregistrer</button>
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">${tt('common.cancel','Annuler')}</button>
+              <button type="submit" class="btn btn-primary" id="late-adjust-save-btn">${tt('common.save','Enregistrer')}</button>
             </div>
           </form>
         </div>
@@ -91,7 +93,7 @@ function wireAdjustmentModal({ ctx, player, teamConfig }) {
     const adjustedMinutes = Number(fd.get('late_adjusted_minutes') || 0);
     const reasonText = String(fd.get('reason') || '').trim();
     if (!Number.isInteger(adjustedMinutes) || adjustedMinutes < 0) {
-      showAlert('Les minutes ajustées doivent être un nombre entier positif.', 'danger');
+      showAlert(tt('player_detail.adjust_minutes_invalid','Les minutes ajustées doivent être un nombre entier positif.'), 'danger');
       return;
     }
     saveBtn.disabled = true;
@@ -119,14 +121,14 @@ function wireAdjustmentModal({ ctx, player, teamConfig }) {
         playerRow: { ...playerBefore, late_adjusted_minutes: adjustedMinutes },
         teamConfig,
         attendanceRows: attendanceRows || [],
-        reason: reasonText || 'Ajustement retard cumulé'
+        reason: reasonText || tt('player_detail.adjust_reason_default','Ajustement retard cumulé')
       });
-      showAlert('Retard cumulé ajusté avec succès.');
+      showAlert(tt('player_detail.adjust_save_success','Retard cumulé ajusté avec succès.'));
       modal.hide();
       window.location.reload();
     } catch (error) {
       console.error(error);
-      showAlert(error.message || 'Impossible de mettre à jour le retard cumulé.', 'danger');
+      showAlert(error.message || tt('player_detail.adjust_save_failed','Impossible de mettre à jour le retard cumulé.'), 'danger');
     } finally {
       saveBtn.disabled = false;
       saveBtn.innerHTML = oldLabel;
@@ -145,8 +147,8 @@ function wireAdjustmentModal({ ctx, player, teamConfig }) {
     backToTeam?.classList.remove('d-none');
   }
   if (!playerId) {
-    showAlert('Joueuse introuvable.', 'danger');
-    host.innerHTML = '<div class="card"><div class="card-body text-muted">Identifiant de joueuse manquant.</div></div>';
+    showAlert(tt('player_detail.not_found','Joueuse introuvable.'), 'danger');
+    host.innerHTML = `<div class="card"><div class="card-body text-muted">${tt('player_detail.missing_id','Identifiant de joueuse manquant.')}</div></div>`;
     return;
   }
 
@@ -157,13 +159,13 @@ function wireAdjustmentModal({ ctx, player, teamConfig }) {
       .eq('id', playerId)
       .maybeSingle();
     if (error) throw error;
-    if (!player?.id) throw new Error('Joueuse introuvable.');
+    if (!player?.id) throw new Error(tt('player_detail.not_found','Joueuse introuvable.'));
 
     if (ctx.role === 'coach') {
       const { data: coachMembership, error: coachError } = await supabase.from('coaches').select('team_id').eq('profile_id', ctx.user.id).maybeSingle();
       if (coachError) throw coachError;
       if (!coachMembership?.team_id || Number(coachMembership.team_id) !== Number(player.team_id)) {
-        throw new Error('Accès non autorisé à cette joueuse.');
+        throw new Error(tt('player_detail.unauthorized','Accès non autorisé à cette joueuse.'));
       }
     }
 
@@ -173,8 +175,8 @@ function wireAdjustmentModal({ ctx, player, teamConfig }) {
       late_penalty_points: player.teams?.late_penalty_points || 0
     };
 
-    titleEl.textContent = player.full_name || 'Détail joueuse';
-    subtitleEl.innerHTML = `<span class="badge bg-label-primary">${escapeHtml(player.teams?.name || 'Équipe')}</span><span class="ms-2 text-muted">#${escapeHtml(player.jersey_number ?? '—')} · ${escapeHtml(player.primary_position || '—')}</span>`;
+    titleEl.textContent = player.full_name || tt('player_detail.title_default','Détail joueuse');
+    subtitleEl.innerHTML = `<span class="badge bg-label-primary">${escapeHtml(player.teams?.name || tt('player_detail.team_default','Équipe'))}</span><span class="ms-2 text-muted">#${escapeHtml(player.jersey_number ?? '—')} · ${escapeHtml(player.primary_position || '—')}</span>`;
 
     const [attendanceRes, historyRes] = await Promise.all([
       supabase
@@ -205,14 +207,14 @@ function wireAdjustmentModal({ ctx, player, teamConfig }) {
               <img src="${personAvatarUrl(player)}" alt="${escapeHtml(player.full_name || '')}" class="rounded-circle mb-3" style="width:96px;height:96px;object-fit:cover;">
               <h5 class="mb-1">${escapeHtml(player.full_name || '')}</h5>
               <div class="small text-muted mb-2">#${escapeHtml(player.jersey_number ?? '—')} · ${escapeHtml(player.primary_position || '—')}</div>
-              <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap mb-3">${captainBadge(player.captain_role, 'captain-icon-lg')}<span class="badge bg-label-warning">${Number(player.current_points || 0)} pts</span></div>
+              <div class="d-flex justify-content-center align-items-center gap-2 flex-wrap mb-3">${captainBadge(player.captain_role, 'captain-icon-lg')}<span class="badge bg-label-warning">${Number(player.current_points || 0)} ${tt('player_detail.unit_pts','pts')}</span></div>
               <div class="text-start small">
-                <div class="mb-2"><span class="text-muted">Équipe :</span> <span class="fw-semibold">${escapeHtml(player.teams?.name || '—')}</span></div>
-                <div class="mb-2"><span class="text-muted">Statut :</span> ${escapeHtml(player.status || '—')}</div>
-                <div class="mb-2"><span class="text-muted">Âge :</span> ${escapeHtml(player.age ?? '—')}</div>
-                <div class="mb-2"><span class="text-muted">Taille :</span> ${escapeHtml(player.height_cm ?? '—')} ${player.height_cm ? 'cm' : ''}</div>
-                <div class="mb-2"><span class="text-muted">Poids :</span> ${escapeHtml(player.weight_kg ?? '—')} ${player.weight_kg ? 'kg' : ''}</div>
-                <div><span class="text-muted">Poste secondaire :</span> ${escapeHtml(player.secondary_position || '—')}</div>
+                <div class="mb-2"><span class="text-muted">${tt('player_detail.team_label','Équipe')} :</span> <span class="fw-semibold">${escapeHtml(player.teams?.name || '—')}</span></div>
+                <div class="mb-2"><span class="text-muted">${tt('player_detail.status_label','Statut')} :</span> ${escapeHtml(player.status || '—')}</div>
+                <div class="mb-2"><span class="text-muted">${tt('player_detail.age_label','Âge')} :</span> ${escapeHtml(player.age ?? '—')}</div>
+                <div class="mb-2"><span class="text-muted">${tt('player_detail.height_label','Taille')} :</span> ${escapeHtml(player.height_cm ?? '—')} ${player.height_cm ? tt('player_detail.unit_cm','cm') : ''}</div>
+                <div class="mb-2"><span class="text-muted">${tt('player_detail.weight_label','Poids')} :</span> ${escapeHtml(player.weight_kg ?? '—')} ${player.weight_kg ? tt('player_detail.unit_kg','kg') : ''}</div>
+                <div><span class="text-muted">${tt('player_detail.secondary_position_label','Poste secondaire')} :</span> ${escapeHtml(player.secondary_position || '—')}</div>
               </div>
             </div>
           </div>
@@ -222,41 +224,41 @@ function wireAdjustmentModal({ ctx, player, teamConfig }) {
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                 <div>
-                  <h5 class="mb-1">Discipline</h5>
-                  <div class="small text-muted">Vue détaillée des présences, absences, retard cumulé et impacts de points.</div>
+                  <h5 class="mb-1">${tt('player_detail.discipline_title','Discipline')}</h5>
+                  <div class="small text-muted">${tt('player_detail.discipline_desc','Vue détaillée des présences, absences, retard cumulé et impacts de points.')}</div>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <span class="badge bg-label-warning">${Number(player.current_points || 0)} pts</span>
-                  ${canAdjustLate ? '<button class="btn btn-sm btn-outline-primary" id="open-late-adjust-btn"><i class="bx bx-time-five me-1"></i>Ajuster retard</button>' : ''}
+                  <span class="badge bg-label-warning">${Number(player.current_points || 0)} ${tt('player_detail.unit_pts','pts')}</span>
+                  ${canAdjustLate ? `<button class="btn btn-sm btn-outline-primary" id="open-late-adjust-btn"><i class="bx bx-time-five me-1"></i>${tt('player_detail.adjust_late_button','Ajuster retard')}</button>` : ''}
                 </div>
               </div>
               <div class="row">
-                ${statCard('Présences', stats.present, 'success')}
-                ${statCard('Excusées', stats.excused, 'secondary')}
-                ${statCard('Absences', stats.absent, 'danger')}
-                ${statCard('Retard total', `${lateState.totalLateMinutes} min`, 'warning')}
-                ${statCard('Minutes ajustées', `${lateState.adjustedMinutes} min`, 'info')}
-                ${statCard('Retard effectif', `${lateState.effectiveLateMinutes} min`, 'warning')}
-                ${statCard('Paliers dépassés', lateState.penaltySteps, 'danger')}
-                ${statCard('Impact retard', `${lateState.penaltyTotal} pts`, lateState.penaltyTotal < 0 ? 'danger' : 'secondary')}
+                ${statCard(tt('player_detail.stat_present','Présences'), stats.present, 'success')}
+                ${statCard(tt('player_detail.stat_excused','Excusées'), stats.excused, 'secondary')}
+                ${statCard(tt('player_detail.stat_absent','Absences'), stats.absent, 'danger')}
+                ${statCard(tt('player_detail.stat_late_total','Retard total'), `${lateState.totalLateMinutes} ${tt('player_detail.unit_min','min')}`, 'warning')}
+                ${statCard(tt('player_detail.adjusted_minutes','Minutes ajustées'), `${lateState.adjustedMinutes} ${tt('player_detail.unit_min','min')}`, 'info')}
+                ${statCard(tt('player_detail.stat_effective_late','Retard effectif'), `${lateState.effectiveLateMinutes} ${tt('player_detail.unit_min','min')}`, 'warning')}
+                ${statCard(tt('player_detail.stat_steps','Paliers dépassés'), lateState.penaltySteps, 'danger')}
+                ${statCard(tt('player_detail.stat_late_impact','Impact retard'), `${lateState.penaltyTotal} ${tt('player_detail.unit_pts','pts')}`, lateState.penaltyTotal < 0 ? 'danger' : 'secondary')}
               </div>
-              <div class="small text-muted mt-2">Seuil équipe : ${lateState.thresholdMinutes} min • Pénalité appliquée à chaque seuil : ${lateState.penaltyPoints} pt${lateState.penaltyPoints > 1 ? 's' : ''}</div>
+              <div class="small text-muted mt-2">${tt('player_detail.team_threshold_summary','Seuil équipe : {minutes} min • Pénalité appliquée à chaque seuil : {points} pt{suffix}').replace('{minutes}', lateState.thresholdMinutes).replace('{points}', lateState.penaltyPoints).replace('{suffix}', lateState.penaltyPoints > 1 ? 's' : '')}</div>
             </div>
           </div>
         </div>
         <div class="col-12 mb-4">
           <div class="card">
             <div class="card-body">
-              <h5 class="mb-3">Historique des points</h5>
-              ${historyRows.length ? `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Date</th><th>Motif</th><th>Source</th><th>Impact</th></tr></thead><tbody>${historyRows.map(item => `<tr><td>${escapeHtml(formatDate(item.created_at))}</td><td>${escapeHtml(item.label || 'Discipline')}</td><td>${escapeHtml(item.source_type || 'attendance')}</td><td>${impactBadge(item.delta)}</td></tr>`).join('')}</tbody></table></div>` : `<div class="text-muted small">Aucun mouvement de points pour le moment.</div>`}
+              <h5 class="mb-3">${tt('player_detail.points_history_title','Historique des points')}</h5>
+              ${historyRows.length ? `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>${tt('player_detail.col_date','Date')}</th><th>${tt('player_detail.col_reason','Motif')}</th><th>${tt('player_detail.col_source','Source')}</th><th>${tt('profile.table_impact','Impact')}</th></tr></thead><tbody>${historyRows.map(item => `<tr><td>${escapeHtml(formatDate(item.created_at))}</td><td>${escapeHtml(item.label || tt('player_detail.label_discipline','Discipline'))}</td><td>${escapeHtml(item.source_type || tt('player_detail.source_attendance','présence'))}</td><td>${impactBadge(item.delta)}</td></tr>`).join('')}</tbody></table></div>` : `<div class="text-muted small">${tt('player_detail.points_history_empty','Aucun mouvement de points pour le moment.')}</div>`}
             </div>
           </div>
         </div>
         <div class="col-12 mb-4">
           <div class="card">
             <div class="card-body">
-              <h5 class="mb-3">Présences enregistrées</h5>
-              ${attendanceRows.length ? `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Séance</th><th>Type</th><th>Statut</th><th>Retard</th><th>Impact</th><th>Enregistré le</th></tr></thead><tbody>${attendanceRows.map(item => `<tr><td><div class="fw-semibold">${escapeHtml(item.sessions?.title || 'Séance')}</div><div class="small text-muted">${escapeHtml(formatDate(item.sessions?.session_date))}${item.sessions?.start_time ? ` · ${escapeHtml(String(item.sessions.start_time).slice(0,5))}` : ''}</div></td><td>${sessionTypeLabel(item.sessions?.session_type)}</td><td>${attendanceStatusLabel(item.attendance_status)}</td><td>${Number(item.late_minutes || 0)} min</td><td>${impactBadge(item.points_delta)}</td><td>${escapeHtml(formatDate(item.recorded_at))}</td></tr>`).join('')}</tbody></table></div>` : `<div class="text-muted small">Aucune présence enregistrée pour le moment.</div>`}
+              <h5 class="mb-3">${tt('player_detail.attendance_title','Présences enregistrées')}</h5>
+              ${attendanceRows.length ? `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>${tt('player_detail.col_session','Séance')}</th><th>${tt('player_detail.col_type','Type')}</th><th>${tt('player_detail.col_status','Statut')}</th><th>${tt('player_detail.col_late','Retard')}</th><th>${tt('profile.table_impact','Impact')}</th><th>${tt('player_detail.col_recorded_at','Enregistré le')}</th></tr></thead><tbody>${attendanceRows.map(item => `<tr><td><div class="fw-semibold">${escapeHtml(item.sessions?.title || tt('player_detail.label_session','Séance'))}</div><div class="small text-muted">${escapeHtml(formatDate(item.sessions?.session_date))}${item.sessions?.start_time ? ` · ${escapeHtml(String(item.sessions.start_time).slice(0,5))}` : ''}</div></td><td>${sessionTypeLabel(item.sessions?.session_type)}</td><td>${attendanceStatusLabel(item.attendance_status)}</td><td>${Number(item.late_minutes || 0)} ${tt('player_detail.unit_min','min')}</td><td>${impactBadge(item.points_delta)}</td><td>${escapeHtml(formatDate(item.recorded_at))}</td></tr>`).join('')}</tbody></table></div>` : `<div class="text-muted small">${tt('player_detail.attendance_empty','Aucune présence enregistrée pour le moment.')}</div>`}
             </div>
           </div>
         </div>
@@ -266,7 +268,7 @@ function wireAdjustmentModal({ ctx, player, teamConfig }) {
     wireAdjustmentModal({ ctx, player, teamConfig });
   } catch (err) {
     console.error(err);
-    showAlert(err.message || 'Impossible de charger le détail de la joueuse.', 'danger');
-    host.innerHTML = `<div class="card"><div class="card-body text-muted">${escapeHtml(err.message || 'Impossible de charger le détail de la joueuse.')}</div></div>`;
+    showAlert(err.message || tt('player_detail.load_failed','Impossible de charger le détail de la joueuse.'), 'danger');
+    host.innerHTML = `<div class="card"><div class="card-body text-muted">${escapeHtml(err.message || tt('player_detail.load_failed','Impossible de charger le détail de la joueuse.'))}</div></div>`;
   }
 })();

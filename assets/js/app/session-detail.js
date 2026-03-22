@@ -174,11 +174,11 @@ function playerAttendanceHeroBadge() {
   if (!row) return '';
   const late = Number(row.late_minutes || 0);
   const label = row.attendance_status === 'absent_excused'
-    ? 'Absence excusée'
+    ? tt('session_detail.attendance.badge_excused','Absence excusée')
     : row.attendance_status === 'absent_unexcused'
-      ? 'Absence'
+      ? tt('session_detail.attendance.badge_absent','Absence')
       : late > 0
-        ? `Présente • retard ${late} min`
+        ? tt('session_detail.attendance.badge_present_late','Présente • retard {late} min').replace('{late}', late)
         : 'Présente';
   const cls = row.attendance_status === 'absent_unexcused'
     ? 'bg-label-danger'
@@ -205,40 +205,40 @@ function renderAttendanceSection() {
     <div class="card mb-4">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-          <h5 class="mb-0">Présences & discipline</h5>
-          <div class="text-muted small">Affichage limité à cette séance. Le retard est enregistré sans impact pour le moment.</div>
+          <h5 class="mb-0">${tt('session_detail.attendance.title','Présences & discipline')}</h5>
+          <div class="text-muted small">${tt('session_detail.attendance.desc','Affichage limité à cette séance. Le retard est enregistré sans impact pour le moment.')}</div>
         </div>
         <div class="d-flex gap-2 flex-wrap">
           ${recordedRows.length ? `<span class="badge bg-label-success">Présentes ${counts.present}</span>
-          <span class="badge bg-label-info">Excusées ${counts.absent_excused}</span>
-          <span class="badge bg-label-danger">Absentes ${counts.absent_unexcused}</span>
-          <span class="badge bg-label-warning">Retards ${counts.late}</span>` : ''}
-          ${isEditor ? `<button class="btn btn-sm btn-primary" id="attendance-open-btn" ${canManage ? '' : 'disabled'}><i class="bx bx-check-square me-1"></i>Gestion présence</button>` : ''}
+          <span class="badge bg-label-info">${tt('session_detail.attendance.excused_count','Excusées {count}').replace('{count}', counts.absent_excused)}</span>
+          <span class="badge bg-label-danger">${tt('session_detail.attendance.absent_count','Absentes {count}').replace('{count}', counts.absent_unexcused)}</span>
+          <span class="badge bg-label-warning">${tt('session_detail.attendance.late_count','Retards {count}').replace('{count}', counts.late)}</span>` : ''}
+          ${isEditor ? `<button class="btn btn-sm btn-primary" id="attendance-open-btn" ${canManage ? '' : 'disabled'}><i class="bx bx-check-square me-1"></i>${tt('session_detail.attendance.manage','Gestion présence')}</button>` : ''}
         </div>
       </div>
       <div class="card-body">
         <div class="row g-3 mb-3">
-          <div class="col-md-4"><div class="session-detail-box h-100"><div class="session-detail-box-label">Type de séance</div><div class="fw-semibold">${sessionTypeLabel(currentSession?.session_type)}</div></div></div>
-          <div class="col-md-4"><div class="session-detail-box h-100"><div class="session-detail-box-label">Présence pratique</div><div class="fw-semibold">+${getAttendanceConfigValue('practice_presence_points', 0)} pts</div><div class="small text-muted">Théorie: +${getAttendanceConfigValue('practice_presence_points', 0) / 2} pts</div></div></div>
-          <div class="col-md-4"><div class="session-detail-box h-100"><div class="session-detail-box-label">Absence non excusée</div><div class="fw-semibold">-${getAttendanceConfigValue('practice_absence_penalty', 0)} pts</div><div class="small text-muted">Théorie: -${getAttendanceConfigValue('practice_absence_penalty', 0) / 2} pts</div></div></div>
+          <div class="col-md-4"><div class="session-detail-box h-100"><div class="session-detail-box-label">${tt('session_detail.type_label','Type de séance')}</div><div class="fw-semibold">${sessionTypeLabel(currentSession?.session_type)}</div></div></div>
+          <div class="col-md-4"><div class="session-detail-box h-100"><div class="session-detail-box-label">${tt('session_detail.attendance.practice_presence','Présence pratique')}</div><div class="fw-semibold">+${getAttendanceConfigValue('practice_presence_points', 0)} ${tt('player_detail.unit_pts','pts')}</div><div class="small text-muted">${tt('session_detail.attendance.theory_points','Théorie: {value} pts').replace('{value}', `+${getAttendanceConfigValue('practice_presence_points', 0) / 2}`)}</div></div></div>
+          <div class="col-md-4"><div class="session-detail-box h-100"><div class="session-detail-box-label">${tt('session_detail.attendance.unexcused_absence','Absence non excusée')}</div><div class="fw-semibold">-${getAttendanceConfigValue('practice_absence_penalty', 0)} ${tt('player_detail.unit_pts','pts')}</div><div class="small text-muted">${tt('session_detail.attendance.theory_points','Théorie: {value} pts').replace('{value}', `-${getAttendanceConfigValue('practice_absence_penalty', 0) / 2}`)}</div></div></div>
         </div>
-        ${!canManage && isEditor ? `<div class="alert alert-secondary py-2 ${recordedRows.length ? 'mb-3' : 'mb-0'}">La gestion de présence est disponible le jour de la séance et après.</div>` : ''}
-        ${recordedRows.length ? `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Joueuse</th><th>Statut</th><th>Retard</th><th>Impact</th></tr></thead><tbody>${recordedRows.map(({ player, attendance_status, late_minutes, points_delta }) => {
+        ${!canManage && isEditor ? `<div class="alert alert-secondary py-2 ${recordedRows.length ? 'mb-3' : 'mb-0'}">${tt('session_detail.attendance.management_hint','La gestion de présence est disponible le jour de la séance et après.')}</div>` : ''}
+        ${recordedRows.length ? `<div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>${tt('session_detail.attendance.player','Joueuse')}</th><th>${tt('player_detail.col_status','Statut')}</th><th>${tt('session_detail.attendance.late_minutes','Retard (min)')}</th><th>${tt('session_detail.attendance.impact','Impact')}</th></tr></thead><tbody>${recordedRows.map(({ player, attendance_status, late_minutes, points_delta }) => {
           const status = attendance_status || 'present';
           const late = Number(late_minutes || 0);
           const delta = Number(points_delta ?? computeAttendanceDelta(status, late));
-          return `<tr><td>${escapeHtml(player?.full_name || 'Joueuse')}</td><td>${status === 'absent_excused' ? 'Excusée' : status === 'absent_unexcused' ? 'Absente' : 'Présente'}</td><td>${late > 0 ? `${late} min` : '—'}</td><td>${attendanceImpactBadge(delta)}</td></tr>`;
-        }).join('')}</tbody></table></div>` : `<div class="text-muted">Aucune présence n'est encore enregistrée pour cette séance.</div>`}
+          return `<tr><td>${escapeHtml(player?.full_name || 'Joueuse')}</td><td>${status === 'absent_excused' ? tt('session_detail.attendance.recorded_by_player_excused','Excusée') : status === 'absent_unexcused' ? tt('session_detail.attendance.recorded_by_player_absent','Absente') : tt('session_detail.attendance.recorded_by_player_present','Présente')}</td><td>${late > 0 ? `${late} ${tt('player_detail.unit_min','min')}` : tt('session_detail.attendance.no_late','—')}</td><td>${attendanceImpactBadge(delta)}</td></tr>`;
+        }).join('')}</tbody></table></div>` : `<div class="text-muted">${tt('session_detail.attendance.recorded_empty',"Aucune présence n’est encore enregistrée pour cette séance.")}</div>`}
       </div>
     </div>
 
-    ${isEditor ? `<div class="modal fade" id="attendance-modal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Gestion présence</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><form id="attendance-form"><div class="table-responsive"><table class="table align-middle"><thead><tr><th>Joueuse</th><th>Présente</th><th>Excusée</th><th>Absente</th><th>Retard (min)</th><th>Impact</th></tr></thead><tbody>${teamPlayers.map(player => {
+    ${isEditor ? `<div class="modal fade" id="attendance-modal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">${tt('session_detail.attendance.modal_title','Gestion présence')}</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><form id="attendance-form"><div class="table-responsive"><table class="table align-middle"><thead><tr><th>${tt('session_detail.attendance.player','Joueuse')}</th><th>${tt('session_detail.attendance.present','Présente')}</th><th>${tt('session_detail.attendance.excused','Excusée')}</th><th>${tt('session_detail.attendance.absent','Absente')}</th><th>${tt('session_detail.attendance.late_minutes','Retard (min)')}</th><th>${tt('session_detail.attendance.impact','Impact')}</th></tr></thead><tbody>${teamPlayers.map(player => {
       const row = attendanceRows.find(item => Number(item.player_id) === Number(player.id));
       const status = row?.attendance_status || 'present';
       const late = Number(row?.late_minutes || 0);
       const delta = Number(row?.points_delta ?? computeAttendanceDelta(status, late));
-      return `<tr data-player-id="${player.id}"><td><div class="fw-semibold">${escapeHtml(player.full_name || '')}</div><div class="small text-muted">Points actuels: ${Number(player.current_points || 0)}</div></td><td><input class="form-check-input attendance-status" type="radio" name="status_${player.id}" value="present" ${status === 'present' ? 'checked' : ''}></td><td><input class="form-check-input attendance-status" type="radio" name="status_${player.id}" value="absent_excused" ${status === 'absent_excused' ? 'checked' : ''}></td><td><input class="form-check-input attendance-status" type="radio" name="status_${player.id}" value="absent_unexcused" ${status === 'absent_unexcused' ? 'checked' : ''}></td><td><input class="form-control form-control-sm attendance-late" type="number" min="0" step="1" value="${late > 0 ? late : ''}" ${status === 'present' ? '' : 'disabled'}></td><td class="attendance-impact-cell">${attendanceImpactBadge(delta)}</td></tr>`;
-    }).join('')}</tbody></table></div></form></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button><button type="button" class="btn btn-primary" id="attendance-save-btn">Enregistrer</button></div></div></div></div>` : ''}
+      return `<tr data-player-id="${player.id}"><td><div class="fw-semibold">${escapeHtml(player.full_name || '')}</div><div class="small text-muted">${tt('session_detail.attendance.current_points','Points actuels: {value}').replace('{value}', Number(player.current_points || 0))}</div></td><td><input class="form-check-input attendance-status" type="radio" name="status_${player.id}" value="present" ${status === 'present' ? 'checked' : ''}></td><td><input class="form-check-input attendance-status" type="radio" name="status_${player.id}" value="absent_excused" ${status === 'absent_excused' ? 'checked' : ''}></td><td><input class="form-check-input attendance-status" type="radio" name="status_${player.id}" value="absent_unexcused" ${status === 'absent_unexcused' ? 'checked' : ''}></td><td><input class="form-control form-control-sm attendance-late" type="number" min="0" step="1" value="${late > 0 ? late : ''}" ${status === 'present' ? '' : 'disabled'}></td><td class="attendance-impact-cell">${attendanceImpactBadge(delta)}</td></tr>`;
+    }).join('')}</tbody></table></div></form></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">${tt('session_detail.attendance.close','Fermer')}</button><button type="button" class="btn btn-primary" id="attendance-save-btn">${tt('common.save','Enregistrer')}</button></div></div></div></div>` : ''}
   `;
 }
 
@@ -546,7 +546,7 @@ function wireAttendanceActions() {
             player_id: item.player_id,
             session_id: currentSession.id,
             delta: diff,
-            label: previous ? `${attendanceReasonLabel(item.attendance_status)} · correction` : attendanceReasonLabel(item.attendance_status),
+            label: previous ? `${attendanceReasonLabel(item.attendance_status)}${tt('session_detail.attendance.correction_suffix',' · correction')}` : attendanceReasonLabel(item.attendance_status),
             source_type: 'attendance',
             created_by: ctx.user?.id || null
           });
